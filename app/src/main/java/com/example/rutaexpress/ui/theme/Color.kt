@@ -2,6 +2,11 @@ package com.example.rutaexpress.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
+val PrimaryRed = Color(0xFFF72907)
+val PrimaryRedDark = Color(0xFFC41E00)
+val BackgroundLight = Color(0xFFF7F8FA)
+val SurfaceLight = Color(0xFFFFFFFF)
+
 val Purple80 = Color(0xFFD0BCFF)
 val PurpleGrey80 = Color(0xFFCCC2DC)
 val Pink80 = Color(0xFFEFB8C8)
