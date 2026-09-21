@@ -100,6 +100,8 @@ fun SignUpScreen(
         focusedLabelColor = PrimaryRedHex,
         cursorColor = PrimaryRedHex,
         focusedLeadingIconColor = PrimaryRedHex,
+        focusedTextColor = TextPrimaryHex,
+        unfocusedTextColor = TextPrimaryHex,
     )
 
     Scaffold(
@@ -222,10 +224,11 @@ fun SignUpScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Campo: Nombres
+            // Campo: Nombres (Solo lectura - completado automáticamente por RENIEC/DNI)
             OutlinedTextField(
                 value = uiState.nombres,
-                onValueChange = { viewModel.onNombresChanged(it) },
+                onValueChange = {},
+                readOnly = true,
                 label = { Text("Nombres") },
                 leadingIcon = {
                     Icon(
@@ -234,21 +237,21 @@ fun SignUpScreen(
                     )
                 },
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                 colors = commonTextFieldColors,
                 modifier = Modifier.fillMaxWidth(),
             )
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Fila para Apellidos (Paterno y Materno)
+            // Fila para Apellidos (Solo lectura - completados automáticamente por RENIEC/DNI)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 OutlinedTextField(
                     value = uiState.apellidoPaterno,
-                    onValueChange = { viewModel.onApellidoPaternoChanged(it) },
+                    onValueChange = {},
+                    readOnly = true,
                     label = { Text("Ap. Paterno") },
                     leadingIcon = {
                         Icon(
@@ -257,14 +260,14 @@ fun SignUpScreen(
                         )
                     },
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     colors = commonTextFieldColors,
                     modifier = Modifier.weight(1f),
                 )
 
                 OutlinedTextField(
                     value = uiState.apellidoMaterno,
-                    onValueChange = { viewModel.onApellidoMaternoChanged(it) },
+                    onValueChange = {},
+                    readOnly = true,
                     label = { Text("Ap. Materno") },
                     leadingIcon = {
                         Icon(
@@ -273,7 +276,6 @@ fun SignUpScreen(
                         )
                     },
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     colors = commonTextFieldColors,
                     modifier = Modifier.weight(1f),
                 )
