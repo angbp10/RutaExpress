@@ -14,6 +14,8 @@ import com.example.rutaexpress.ui.home.ClienteHomeScreen
 import com.example.rutaexpress.ui.home.ConductorHomeScreen
 import com.example.rutaexpress.ui.home.RecepcionistaHomeScreen
 import com.example.rutaexpress.ui.login.LoginScreen
+import com.example.rutaexpress.ui.recepcionista.EncomiendaScreen
+import com.example.rutaexpress.ui.recepcionista.GestionEstadosScreen
 import com.example.rutaexpress.ui.recepcionista.RecepcionistaProfileScreen
 import com.example.rutaexpress.ui.recepcionista.VehiculosCrudScreen
 import com.example.rutaexpress.ui.signup.SignUpScreen
@@ -113,6 +115,28 @@ fun AppNavigation() {
                 },
                 onNavigateToProfile = {
                     navController.navigate("profile_recepcionista")
+                },
+                onNavigateToEmision = {
+                    navController.navigate("encomienda_emision")
+                },
+                onNavigateToGestion = {
+                    navController.navigate("encomienda_gestion")
+                }
+            )
+        }
+
+        composable("encomienda_emision") {
+            EncomiendaScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable("encomienda_gestion") {
+            GestionEstadosScreen(
+                onBackClick = {
+                    navController.popBackStack()
                 }
             )
         }

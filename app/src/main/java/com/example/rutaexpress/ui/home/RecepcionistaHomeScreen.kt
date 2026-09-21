@@ -26,10 +26,12 @@ import androidx.compose.material.icons.Icons
 
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Assignment
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.Schedule
@@ -99,6 +101,8 @@ fun RecepcionistaHomeScreen(
     vehiculoViewModel: VehiculoViewModel = viewModel(),
     onNavigateToFlota: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
+    onNavigateToEmision: () -> Unit = {},
+    onNavigateToGestion: () -> Unit = {},
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -186,6 +190,28 @@ fun RecepcionistaHomeScreen(
                     onClick = {
                         scope.launch { drawerState.close() }
                         onNavigateToFlota()
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
+
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.LocalShipping, contentDescription = null, tint = PrimaryRedHex) },
+                    label = { Text("Emisión de Encomiendas", fontWeight = FontWeight.Bold) },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onNavigateToEmision()
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
+
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.Assignment, contentDescription = null, tint = PrimaryRedHex) },
+                    label = { Text("Seguimiento de Encomiendas", fontWeight = FontWeight.Bold) },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onNavigateToGestion()
                     },
                     modifier = Modifier.padding(horizontal = 12.dp)
                 )
