@@ -21,6 +21,7 @@ data class SignUpUiState(
     val email: String = "",
     val telefono: String = "",
     val password: String = "",
+    val confirmPassword: String = "",
     val isDniLoading: Boolean = false,
     val isSignUpLoading: Boolean = false,
     val isSignUpSuccess: Boolean = false,
@@ -79,6 +80,10 @@ class SignUpViewModel(
         _uiState.update { it.copy(password = value) }
     }
 
+    fun onConfirmPasswordChanged(value: String) {
+        _uiState.update { it.copy(confirmPassword = value) }
+    }
+
     /**
      * Consulta el DNI en la API REST de json.pe y autocompleta nombres y apellidos.
      */
@@ -121,8 +126,8 @@ class SignUpViewModel(
             _uiState.update { it.copy(errorMessage = "Por favor, ingresa nombres y apellido paterno.") }
             return
         }
-        if (currentState.email.isBlank() || !currentState.email.contains("@")) {
-            _uiState.update { it.copy(errorMessage = "Ingresa un correo electrónico válido.") }
+        if (currentState.email.isBlank() || !currentState.email.contains("@gmail.com", ignoreCase = true)) {
+            _uiState.update { it.copy(errorMessage = "El correo debe contener '@gmail.com'.") }
             return
         }
         if (currentState.telefono.length < 9) {
@@ -131,6 +136,10 @@ class SignUpViewModel(
         }
         if (currentState.password.length < 6) {
             _uiState.update { it.copy(errorMessage = "La contraseña debe tener al menos 6 caracteres.") }
+            return
+        }
+        if (currentState.password != currentState.confirmPassword) {
+            _uiState.update { it.copy(errorMessage = "Las contraseñas no coinciden.") }
             return
         }
 

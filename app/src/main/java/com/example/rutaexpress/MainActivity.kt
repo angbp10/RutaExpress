@@ -10,6 +10,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.rutaexpress.ui.cliente.BusquedaClienteScreen
 import com.example.rutaexpress.ui.home.ClienteHomeScreen
 import com.example.rutaexpress.ui.home.ConductorHomeScreen
 import com.example.rutaexpress.ui.home.RecepcionistaHomeScreen
@@ -163,8 +164,8 @@ fun AppNavigation() {
         }
 
         composable("home_cliente") {
-            ClienteHomeScreen(
-                onLogoutClick = {
+            BusquedaClienteScreen(
+                onProfileClick = {
                     navController.navigate("login") {
                         popUpTo("home_cliente") { inclusive = true }
                     }

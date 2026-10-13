@@ -20,7 +20,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.DirectionsBus
-import androidx.compose.material.icons.filled.EventSeat
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Card
@@ -36,7 +35,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -47,8 +45,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.rutaexpress.data.model.RutaHorario
-import com.example.rutaexpress.viewmodel.RutaHorarioViewModel
+import com.example.rutaexpress.data.model.Viaje
+import com.example.rutaexpress.viewmodel.ConductorHomeViewModel
 
 private val PrimaryRedHex = Color(0xFFF72907)
 private val BackgroundSurfaceHex = Color(0xFFFCF9F8)
@@ -56,15 +54,11 @@ private val BackgroundSurfaceHex = Color(0xFFFCF9F8)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConductorHomeScreen(
-    conductorNombre: String = "Juan Pérez",
-    viewModel: RutaHorarioViewModel = viewModel(),
+    viewModel: ConductorHomeViewModel = viewModel(),
     onLogoutClick: () -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsState()
-
-    LaunchedEffect(conductorNombre) {
-        viewModel.loadConductorRutas(conductorNombre)
-    }
+    val conductorNombre = uiState.conductorNombre.ifBlank { "Conductor" }
 
     Scaffold(
         containerColor = BackgroundSurfaceHex,
@@ -154,35 +148,43 @@ fun ConductorHomeScreen(
             Spacer(modifier = Modifier.height(10.dp))
 
             if (uiState.isLoading) {
-                Column(
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(color = PrimaryRedHex)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("Cargando tus rutas asignadas...")
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator(color = PrimaryRedHex)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Cargando tus rutas asignadas...",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
-            } else if (uiState.rutas.isEmpty()) {
-                Column(
+            } else if (uiState.viajes.isEmpty()) {
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "No tienes viajes o rutas asignadas actualmente.",
+                        text = "No tienes rutas asignadas por el momento",
                         fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             } else {
                 LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(uiState.rutas, key = { it.id }) { ruta ->
-                        RutaCardConductor(ruta = ruta)
+                    items(uiState.viajes, key = { it.id }) { viaje ->
+                        RutaCardConductor(viaje = viaje)
                     }
                 }
             }
@@ -191,7 +193,7 @@ fun ConductorHomeScreen(
 }
 
 @Composable
-fun RutaCardConductor(ruta: RutaHorario) {
+fun RutaCardConductor(viaje: Viaje) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
@@ -200,7 +202,7 @@ fun RutaCardConductor(ruta: RutaHorario) {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "${ruta.origen} ➔ ${ruta.destino}",
+                text = "${viaje.origen} ➔ ${viaje.destino}",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = PrimaryRedHex
@@ -217,7 +219,7 @@ fun RutaCardConductor(ruta: RutaHorario) {
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = "Fecha: ${ruta.fecha}",
+                    text = "Fecha: ${viaje.fecha}",
                     fontSize = 14.sp,
                     color = Color.DarkGray
                 )
@@ -234,7 +236,7 @@ fun RutaCardConductor(ruta: RutaHorario) {
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = "Hora de Salida: ${ruta.horaSalida}",
+                    text = "Hora de Salida: ${viaje.horaSalida}",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = Color(0xFF1C1B1B)
@@ -252,27 +254,9 @@ fun RutaCardConductor(ruta: RutaHorario) {
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = "Unidad Asignada: ${ruta.flotaAsignada}",
+                    text = "Unidad Asignada: ${viaje.vehiculoDescripcion.ifBlank { "Combi / MiniBus" }}",
                     fontSize = 14.sp,
                     color = Color.DarkGray
-                )
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Default.EventSeat,
-                    contentDescription = null,
-                    tint = PrimaryRedHex,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = "Pasajeros: ${ruta.asientosTotales - ruta.asientosDisponibles} / ${ruta.asientosTotales}",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = PrimaryRedHex
                 )
             }
         }

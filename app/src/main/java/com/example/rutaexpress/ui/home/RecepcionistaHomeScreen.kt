@@ -2,10 +2,13 @@ package com.example.rutaexpress.ui.home
 
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -23,27 +26,30 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Assignment
+import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocalShipping
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -51,6 +57,7 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
@@ -62,6 +69,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
@@ -81,9 +89,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.rutaexpress.data.model.UsuarioConductor
 import com.example.rutaexpress.data.model.Vehiculo
 import com.example.rutaexpress.data.model.Viaje
 import com.example.rutaexpress.viewmodel.VehiculoViewModel
@@ -109,12 +119,16 @@ fun RecepcionistaHomeScreen(
 
     val viajes by viajeViewModel.viajesState.collectAsState()
     val vehiculos by vehiculoViewModel.vehiculosState.collectAsState()
+    val conductores by viajeViewModel.conductoresState.collectAsState()
     val uiState by viajeViewModel.uiState.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
 
     var showDialog by remember { mutableStateOf(false) }
     var selectedViajeForEdit by remember { mutableStateOf<Viaje?>(null) }
+
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedFilterTab by remember { mutableStateOf("Todas") }
 
     LaunchedEffect(uiState.errorMessage, uiState.successMessage) {
         uiState.errorMessage?.let {
@@ -125,6 +139,22 @@ fun RecepcionistaHomeScreen(
             snackbarHostState.showSnackbar(it)
             viajeViewModel.clearMessages()
         }
+    }
+
+    val viajesFiltrados = viajes.filter { viaje ->
+        val matchesSearch = searchQuery.isBlank() ||
+            viaje.origen.contains(searchQuery, ignoreCase = true) ||
+            viaje.destino.contains(searchQuery, ignoreCase = true) ||
+            viaje.vehiculoDescripcion.contains(searchQuery, ignoreCase = true) ||
+            viaje.conductor.contains(searchQuery, ignoreCase = true)
+
+        val matchesFilter = when (selectedFilterTab) {
+            "Activas" -> true
+            "Inactivas" -> false
+            else -> true
+        }
+
+        matchesSearch && matchesFilter
     }
 
     ModalNavigationDrawer(
@@ -286,19 +316,76 @@ fun RecepcionistaHomeScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // 1. Buscador
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text("Buscar ruta por ciudad o agencia...", fontSize = 13.sp) },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Buscar",
+                            tint = Color.Gray
+                        )
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = PrimaryRedHex,
+                        focusedLabelColor = PrimaryRedHex,
+                        cursorColor = PrimaryRedHex,
+                        unfocusedContainerColor = Color.White,
+                        focusedContainerColor = Color.White
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // 2. Filtros (Chips/Tabs en Row scrolleable)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    val opciones = listOf("Todas", "Activas", "Inactivas")
+                    opciones.forEach { opcion ->
+                        val esActivo = selectedFilterTab == opcion
+                        Surface(
+                            modifier = Modifier.clickable { selectedFilterTab = opcion },
+                            shape = RoundedCornerShape(20.dp),
+                            color = if (esActivo) PrimaryRedHex else Color(0xFFEFEFEF),
+                            contentColor = if (esActivo) Color.White else Color(0xFF1C1B1B)
+                        ) {
+                            Text(
+                                text = opcion,
+                                fontSize = 13.sp,
+                                fontWeight = if (esActivo) FontWeight.Bold else FontWeight.Medium,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
 
                 if (uiState.isLoading && viajes.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(color = PrimaryRedHex)
                     }
-                } else if (viajes.isEmpty()) {
+                } else if (viajesFiltrados.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("No hay viajes programados actualmente.")
+                        Text("No se encontraron viajes con los filtros seleccionados.")
                     }
                 } else {
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        items(viajes, key = { it.id }) { viaje ->
+                    LazyColumn(
+                        contentPadding = PaddingValues(bottom = 88.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(viajesFiltrados, key = { it.id }) { viaje ->
                             ViajeCardItem(
                                 viaje = viaje,
                                 onEdit = {
@@ -318,6 +405,7 @@ fun RecepcionistaHomeScreen(
         CrearEditarRutaDialog(
             viajeInicial = selectedViajeForEdit,
             vehiculosDisponibles = vehiculos.filter { it.estado == "activo" },
+            conductoresDisponibles = conductores,
             onDismiss = { showDialog = false },
             onSaveNew = { viajeNuevo, capacidad ->
                 viajeViewModel.crearViajeConAsientos(viajeNuevo, capacidad)
@@ -337,13 +425,19 @@ fun ViajeCardItem(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    Card(
+    var esActiva by remember { mutableStateOf(true) }
+
+    ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = Color.White),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // A. Sección Superior (Ruta y Estado)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -351,85 +445,230 @@ fun ViajeCardItem(
             ) {
                 Text(
                     text = "${viaje.origen} ➔ ${viaje.destino}",
-                    fontSize = 18.sp,
+                    fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
-                    color = PrimaryRedHex
+                    color = Color(0xFF1C1B1B),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
                 )
-                Text(
-                    text = "S/ ${"%.2f".format(viaje.precio)}",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1C1B1B)
-                )
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                // Badge de Estado
+                Surface(
+                    color = if (esActiva) Color(0xFFE8F5E9) else Color(0xFFEEEEEE),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = if (esActiva) "🟢 Activa · En venta" else "⚪ Inactiva",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (esActiva) Color(0xFF2E7D32) else Color(0xFF616161),
+                        maxLines = 1,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            // B. Contenedor de Detalles (Fondo Gris Claro)
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = Color(0xFFF8F9FA),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Fila 1 (Horarios y Precio)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.CalendarToday,
+                                    contentDescription = null,
+                                    tint = Color.Gray,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "${viaje.fecha} a las ${viaje.horaSalida}",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFF1C1B1B),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            Text(
+                                text = "2h 30m de viaje estimado",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Default.CalendarToday,
-                    contentDescription = null,
-                    tint = Color.Gray,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = "${viaje.fecha} a las ${viaje.horaSalida}",
-                    fontSize = 13.sp,
-                    color = Color.DarkGray
-                )
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(
+                                text = "TARIFA BASE",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Gray
+                            )
+                            Text(
+                                text = "S/ ${"%.2f".format(viaje.precio)}",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = PrimaryRedHex
+                            )
+                        }
+                    }
+
+                    // Fila 2 (Conductor)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            tint = PrimaryRedHex,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Conductor: ${viaje.conductor.ifBlank { "Sin asignar" }}",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.DarkGray
+                        )
+                    }
+
+                    // Fila 3 (Vehículo)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.DirectionsBus,
+                            contentDescription = null,
+                            tint = PrimaryRedHex,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Vehículo: ${viaje.vehiculoDescripcion.ifBlank { "Combi Expreso" }}",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.DarkGray
+                        )
+                    }
+
+                    // Fila 4 (Progreso de Asientos)
+                    val totales = if (viaje.asientosTotales > 0) viaje.asientosTotales else 15
+                    val disponibles = if (viaje.asientosDisponibles >= 0) viaje.asientosDisponibles else 10
+                    val progreso = (disponibles.toFloat() / totales.toFloat()).coerceIn(0f, 1f)
+
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Disponibilidad de asientos:",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = "$disponibles libres / $totales totales",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = PrimaryRedHex
+                            )
+                        }
+                        LinearProgressIndicator(
+                            progress = { progreso },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(6.dp),
+                            color = PrimaryRedHex,
+                            trackColor = PrimaryRedHex.copy(alpha = 0.15f),
+                        )
+                    }
+                }
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Default.DirectionsBus,
-                    contentDescription = null,
-                    tint = Color.Gray,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = "Vehículo: ${viaje.vehiculoDescripcion} | Conductor: ${viaje.conductor}",
-                    fontSize = 13.sp,
-                    color = Color.DarkGray
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
+            // C. Sección de Botones Inferiores (33% de ancho cada uno)
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // 1. Botón Editar
                 OutlinedButton(
                     onClick = onEdit,
                     shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.padding(end = 8.dp)
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
+                    modifier = Modifier.weight(1f)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Edit,
-                        contentDescription = "Editar Viaje",
-                        tint = PrimaryRedHex
+                        contentDescription = "Editar",
+                        tint = PrimaryRedHex,
+                        modifier = Modifier.size(15.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Editar", color = PrimaryRedHex)
+                    Text(
+                        text = "Editar",
+                        color = PrimaryRedHex,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
 
-                Button(
+                // 2. Botón Activar / Inactivar
+                OutlinedButton(
+                    onClick = { esActiva = !esActiva },
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = if (esActiva) "Inactivar" else "Activar",
+                        color = Color.DarkGray,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                // 3. Botón Eliminar
+                OutlinedButton(
                     onClick = onDelete,
                     shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F))
+                    colors = ButtonDefaults.outlinedButtonColors(containerColor = Color(0xFFFFEBEE)),
+                    border = BorderStroke(1.dp, Color(0xFFFFCDD2)),
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
+                    modifier = Modifier.weight(1f)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = "Eliminar Viaje",
-                        tint = Color.White
+                        tint = Color(0xFFD32F2F),
+                        modifier = Modifier.size(15.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Eliminar", color = Color.White)
+                    Text(
+                        text = "Eliminar",
+                        color = Color(0xFFD32F2F),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
         }
@@ -441,25 +680,39 @@ fun ViajeCardItem(
 fun CrearEditarRutaDialog(
     viajeInicial: Viaje?,
     vehiculosDisponibles: List<Vehiculo>,
+    conductoresDisponibles: List<UsuarioConductor>,
     onDismiss: () -> Unit,
     onSaveNew: (viaje: Viaje, capacidad: Int) -> Unit,
     onUpdate: (viaje: Viaje) -> Unit,
 ) {
     val context = LocalContext.current
+    val agencias = listOf("Cajamarca", "Celendín", "Balsas", "Leymebamba", "Chachapoyas")
 
     var origen by remember { mutableStateOf(viajeInicial?.origen ?: "Cajamarca") }
     var destino by remember { mutableStateOf(viajeInicial?.destino ?: "Celendín") }
-    var conductor by remember { mutableStateOf(viajeInicial?.conductor ?: "Juan Pérez") }
     var precioText by remember { mutableStateOf(viajeInicial?.precio?.toString() ?: "25.0") }
 
     var fecha by remember { mutableStateOf(viajeInicial?.fecha ?: "") }
     var horaSalida by remember { mutableStateOf(viajeInicial?.horaSalida ?: "") }
+
+    var origenExpanded by remember { mutableStateOf(false) }
+    var destinoExpanded by remember { mutableStateOf(false) }
 
     var vehiculoExpanded by remember { mutableStateOf(false) }
     var vehiculoSeleccionado by remember {
         mutableStateOf<Vehiculo?>(
             vehiculosDisponibles.find { it.id == viajeInicial?.idVehiculo }
                 ?: vehiculosDisponibles.firstOrNull()
+        )
+    }
+
+    var conductorExpanded by remember { mutableStateOf(false) }
+    var conductorSeleccionado by remember {
+        mutableStateOf<UsuarioConductor?>(
+            conductoresDisponibles.find {
+                (viajeInicial?.idConductor.orEmpty().isNotBlank() && it.uid == viajeInicial?.idConductor) ||
+                it.nombreCompleto == viajeInicial?.conductor
+            } ?: conductoresDisponibles.firstOrNull()
         )
     }
 
@@ -512,21 +765,87 @@ fun CrearEditarRutaDialog(
                     .fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                OutlinedTextField(
-                    value = origen,
-                    onValueChange = { origen = it },
-                    label = { Text("Origen") },
-                    colors = tfColors,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                // Dropdown Origen
+                ExposedDropdownMenuBox(
+                    expanded = origenExpanded,
+                    onExpandedChange = { origenExpanded = !origenExpanded }
+                ) {
+                    OutlinedTextField(
+                        value = origen,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Origen") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.LocationOn,
+                                contentDescription = null,
+                                tint = PrimaryRedHex
+                            )
+                        },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = origenExpanded) },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = tfColors,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
+                    )
 
-                OutlinedTextField(
-                    value = destino,
-                    onValueChange = { destino = it },
-                    label = { Text("Destino") },
-                    colors = tfColors,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                    ExposedDropdownMenu(
+                        expanded = origenExpanded,
+                        onDismissRequest = { origenExpanded = false }
+                    ) {
+                        agencias.forEach { ag ->
+                            DropdownMenuItem(
+                                text = { Text(ag) },
+                                onClick = {
+                                    origen = ag
+                                    origenExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                // Dropdown Destino
+                ExposedDropdownMenuBox(
+                    expanded = destinoExpanded,
+                    onExpandedChange = { destinoExpanded = !destinoExpanded }
+                ) {
+                    OutlinedTextField(
+                        value = destino,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Destino") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.LocationOn,
+                                contentDescription = null,
+                                tint = PrimaryRedHex
+                            )
+                        },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = destinoExpanded) },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = tfColors,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
+                    )
+
+                    ExposedDropdownMenu(
+                        expanded = destinoExpanded,
+                        onDismissRequest = { destinoExpanded = false }
+                    ) {
+                        agencias.forEach { ag ->
+                            DropdownMenuItem(
+                                text = { Text(ag) },
+                                onClick = {
+                                    destino = ag
+                                    destinoExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
 
                 // Dropdown de Asignación de Flota
                 ExposedDropdownMenuBox(
@@ -542,7 +861,15 @@ fun CrearEditarRutaDialog(
                         onValueChange = {},
                         readOnly = true,
                         label = { Text("Asignar Vehículo / Flota") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.DirectionsBus,
+                                contentDescription = null,
+                                tint = PrimaryRedHex
+                            )
+                        },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = vehiculoExpanded) },
+                        shape = RoundedCornerShape(12.dp),
                         colors = tfColors,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -565,108 +892,189 @@ fun CrearEditarRutaDialog(
                     }
                 }
 
-                // Selector Nativo de Fecha
-                OutlinedTextField(
-                    value = fecha,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Fecha de Salida (dd/MM/yyyy)") },
-                    placeholder = { Text("Toca para seleccionar fecha") },
-                    trailingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.CalendarToday,
-                            contentDescription = "Elegir Fecha",
-                            modifier = Modifier.clickable { datePickerDialog.show() }
-                        )
-                    },
-                    colors = tfColors,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { datePickerDialog.show() }
-                )
+                // Fila para Fecha y Hora (Mitad y Mitad)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Selector Nativo de Fecha
+                    OutlinedTextField(
+                        value = fecha,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Fecha Salida") },
+                        placeholder = { Text("dd/MM/yyyy") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.CalendarToday,
+                                contentDescription = "Elegir Fecha",
+                                tint = PrimaryRedHex,
+                                modifier = Modifier.clickable { datePickerDialog.show() }
+                            )
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = tfColors,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { datePickerDialog.show() }
+                    )
 
-                // Selector Nativo de Hora
-                OutlinedTextField(
-                    value = horaSalida,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Hora de Salida") },
-                    placeholder = { Text("Toca para seleccionar hora") },
-                    trailingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Schedule,
-                            contentDescription = "Elegir Hora",
-                            modifier = Modifier.clickable { timePickerDialog.show() }
-                        )
-                    },
-                    colors = tfColors,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { timePickerDialog.show() }
-                )
+                    // Selector Nativo de Hora
+                    OutlinedTextField(
+                        value = horaSalida,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Hora Salida") },
+                        placeholder = { Text("08:00 a.m.") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Schedule,
+                                contentDescription = "Elegir Hora",
+                                tint = PrimaryRedHex,
+                                modifier = Modifier.clickable { timePickerDialog.show() }
+                            )
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = tfColors,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { timePickerDialog.show() }
+                    )
+                }
 
-                OutlinedTextField(
-                    value = conductor,
-                    onValueChange = { conductor = it },
-                    label = { Text("Conductor Asignado") },
-                    colors = tfColors,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                // Dropdown de Asignación de Conductor
+                ExposedDropdownMenuBox(
+                    expanded = conductorExpanded,
+                    onExpandedChange = { conductorExpanded = !conductorExpanded }
+                ) {
+                    val displayTextConductor = conductorSeleccionado?.nombreCompleto
+                        ?: viajeInicial?.conductor?.ifBlank { null }
+                        ?: "Seleccionar conductor"
 
+                    OutlinedTextField(
+                        value = displayTextConductor,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Conductor Asignado") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = null,
+                                tint = PrimaryRedHex
+                            )
+                        },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = conductorExpanded) },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = tfColors,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
+                    )
+
+                    ExposedDropdownMenu(
+                        expanded = conductorExpanded,
+                        onDismissRequest = { conductorExpanded = false }
+                    ) {
+                        if (conductoresDisponibles.isEmpty()) {
+                            DropdownMenuItem(
+                                text = { Text("No hay conductores disponibles") },
+                                onClick = { conductorExpanded = false }
+                            )
+                        } else {
+                            conductoresDisponibles.forEach { c ->
+                                DropdownMenuItem(
+                                    text = { Text(c.nombreCompleto) },
+                                    onClick = {
+                                        conductorSeleccionado = c
+                                        conductorExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Precio Pasaje
                 OutlinedTextField(
                     value = precioText,
                     onValueChange = { precioText = it },
-                    label = { Text("Precio del Pasaje (S/)") },
+                    label = { Text("Precio Pasaje") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.AttachMoney,
+                            contentDescription = null,
+                            tint = PrimaryRedHex
+                        )
+                    },
+                    prefix = {
+                        Text("S/ ", fontWeight = FontWeight.Bold, color = PrimaryRedHex)
+                    },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    shape = RoundedCornerShape(12.dp),
                     colors = tfColors,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
         },
         confirmButton = {
-            Button(
-                onClick = {
-                    val precio = precioText.toDoubleOrNull() ?: 20.0
-                    val vehiculo = vehiculoSeleccionado
-
-                    if (viajeInicial == null) {
-                        val viajeNuevo = Viaje(
-                            origen = origen,
-                            destino = destino,
-                            idVehiculo = vehiculo?.id ?: "",
-                            vehiculoDescripcion = vehiculo?.let { "${it.modelo} - ${it.placa}" } ?: "Combi Expreso",
-                            conductor = conductor,
-                            fecha = fecha.ifBlank { "20/05/2025" },
-                            horaSalida = horaSalida.ifBlank { "08:00 a. m." },
-                            precio = precio,
-                        )
-                        onSaveNew(viajeNuevo, vehiculo?.capacidad ?: 15)
-                    } else {
-                        val viajeEditado = viajeInicial.copy(
-                            origen = origen,
-                            destino = destino,
-                            idVehiculo = vehiculo?.id ?: viajeInicial.idVehiculo,
-                            vehiculoDescripcion = vehiculo?.let { "${it.modelo} - ${it.placa}" } ?: viajeInicial.vehiculoDescripcion,
-                            conductor = conductor,
-                            fecha = fecha.ifBlank { viajeInicial.fecha },
-                            horaSalida = horaSalida.ifBlank { viajeInicial.horaSalida },
-                            precio = precio,
-                        )
-                        onUpdate(viajeEditado)
-                    }
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryRedHex)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = if (viajeInicial == null) "Guardar y Generar Asientos" else "Guardar Cambios",
-                    color = Color.White
-                )
+                TextButton(onClick = onDismiss) {
+                    Text("Cancelar", color = Color.Gray)
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Button(
+                    onClick = {
+                        val precio = precioText.toDoubleOrNull() ?: 20.0
+                        val vehiculo = vehiculoSeleccionado
+                        val conductorNombre = conductorSeleccionado?.nombreCompleto ?: viajeInicial?.conductor ?: ""
+                        val conductorUid = conductorSeleccionado?.uid ?: viajeInicial?.idConductor ?: ""
+
+                        if (viajeInicial == null) {
+                            val viajeNuevo = Viaje(
+                                origen = origen,
+                                destino = destino,
+                                idVehiculo = vehiculo?.id ?: "",
+                                vehiculoDescripcion = vehiculo?.let { "${it.modelo} - ${it.placa}" } ?: "Combi Expreso",
+                                idConductor = conductorUid,
+                                conductor = conductorNombre,
+                                fecha = fecha.ifBlank { "20/05/2025" },
+                                horaSalida = horaSalida.ifBlank { "08:00 a. m." },
+                                precio = precio,
+                            )
+                            onSaveNew(viajeNuevo, vehiculo?.capacidad ?: 15)
+                        } else {
+                            val viajeEditado = viajeInicial.copy(
+                                origen = origen,
+                                destino = destino,
+                                idVehiculo = vehiculo?.id ?: viajeInicial.idVehiculo,
+                                vehiculoDescripcion = vehiculo?.let { "${it.modelo} - ${it.placa}" } ?: viajeInicial.vehiculoDescripcion,
+                                idConductor = if (conductorUid.isNotBlank()) conductorUid else viajeInicial.idConductor,
+                                conductor = if (conductorNombre.isNotBlank()) conductorNombre else viajeInicial.conductor,
+                                fecha = fecha.ifBlank { viajeInicial.fecha },
+                                horaSalida = horaSalida.ifBlank { viajeInicial.horaSalida },
+                                precio = precio,
+                            )
+                            onUpdate(viajeEditado)
+                        }
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryRedHex),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = if (viajeInicial == null) "Guardar y Generar" else "Guardar Cambios",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancelar")
-            }
-        }
+        dismissButton = {}
     )
 }

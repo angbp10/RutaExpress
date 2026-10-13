@@ -2,6 +2,7 @@ package com.example.rutaexpress.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.rutaexpress.data.model.UsuarioConductor
 import com.example.rutaexpress.data.model.Viaje
 import com.example.rutaexpress.data.repository.ViajeRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,7 +21,7 @@ data class ViajeUiState(
 )
 
 /**
- * ViewModel para la gestión de Viajes/Rutas y generación automática de asientos.
+ * ViewModel para la gestión de Viajes/Rutas, consulta de conductores y generación automática de asientos.
  */
 class ViajeViewModel(
     private val repository: ViajeRepository = ViajeRepository(),
@@ -32,6 +33,16 @@ class ViajeViewModel(
     val viajesState: StateFlow<List<Viaje>> = repository.getViajesFlow()
         .catch { ex ->
             _uiState.update { it.copy(errorMessage = "Error en viajes: ${ex.localizedMessage}") }
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    val conductoresState: StateFlow<List<UsuarioConductor>> = repository.getConductoresFlow()
+        .catch { ex ->
+            _uiState.update { it.copy(errorMessage = "Error al obtener conductores: ${ex.localizedMessage}") }
         }
         .stateIn(
             scope = viewModelScope,

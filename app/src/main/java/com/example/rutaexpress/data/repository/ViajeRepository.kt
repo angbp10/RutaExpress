@@ -1,6 +1,7 @@
 package com.example.rutaexpress.data.repository
 
 import com.example.rutaexpress.data.model.Asiento
+import com.example.rutaexpress.data.model.UsuarioConductor
 import com.example.rutaexpress.data.model.Viaje
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.channels.awaitClose
@@ -9,12 +10,13 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 
 /**
- * Repositorio para la gestión de Viajes y la generación automática de Asientos con WriteBatch en Firestore.
+ * Repositorio para la gestión de Viajes y la consulta de Conductores desde Firestore.
  */
 class ViajeRepository {
     private val firestore by lazy { FirebaseFirestore.getInstance() }
     private val viajesCollection by lazy { firestore.collection("viajes") }
     private val asientosCollection by lazy { firestore.collection("asientos") }
+    private val usersCollection by lazy { firestore.collection("users") }
 
     /**
      * Escucha en tiempo real la colección de viajes.
@@ -30,6 +32,32 @@ class ViajeRepository {
                 trySend(list)
             }
         }
+        awaitClose { listener.remove() }
+    }
+
+    /**
+     * Consulta en tiempo real la colección "users" filtrando únicamente usuarios con rol "conductor".
+     */
+    fun getConductoresFlow(): Flow<List<UsuarioConductor>> = callbackFlow {
+        val listener = usersCollection
+            .whereEqualTo("role", "conductor")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+                if (snapshot != null) {
+                    val list = snapshot.documents.mapNotNull { doc ->
+                        val conductor = doc.toObject(UsuarioConductor::class.java)
+                        conductor?.apply {
+                            if (uid.isBlank()) {
+                                uid = doc.id
+                            }
+                        }
+                    }
+                    trySend(list)
+                }
+            }
         awaitClose { listener.remove() }
     }
 

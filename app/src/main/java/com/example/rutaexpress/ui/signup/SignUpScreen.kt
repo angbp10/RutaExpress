@@ -78,6 +78,7 @@ fun SignUpScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var isPasswordVisible by remember { mutableStateOf(value = false) }
+    var isConfirmPasswordVisible by remember { mutableStateOf(value = false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     // Mostrar mensaje de error si existe
@@ -289,6 +290,7 @@ fun SignUpScreen(
                 onValueChange = { viewModel.onEmailChanged(it) },
                 label = { Text("Correo Electrónico") },
                 placeholder = { Text("tu@email.com") },
+                isError = !uiState.email.contains("@gmail.com"),
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Email,
@@ -296,7 +298,7 @@ fun SignUpScreen(
                     )
                 },
                 supportingText = {
-                    Text("Te enviaremos los pasajes y comprobantes aquí")
+                    Text("Debe ser un correo @gmail.com")
                 },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
@@ -359,6 +361,37 @@ fun SignUpScreen(
                     }
                 },
                 visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Password,
+                    imeAction = ImeAction.Next,
+                ),
+                colors = commonTextFieldColors,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Campo: Repetir Contraseña
+            OutlinedTextField(
+                value = uiState.confirmPassword,
+                onValueChange = { viewModel.onConfirmPasswordChanged(it) },
+                label = { Text("Repetir Contraseña") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = null,
+                    )
+                },
+                trailingIcon = {
+                    IconButton(onClick = { isConfirmPasswordVisible = !isConfirmPasswordVisible }) {
+                        Icon(
+                            imageVector = if (isConfirmPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                            contentDescription = if (isConfirmPasswordVisible) "Ocultar contraseña" else "Mostrar contraseña",
+                        )
+                    }
+                },
+                visualTransformation = if (isConfirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Password,
