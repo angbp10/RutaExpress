@@ -48,6 +48,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -392,7 +393,10 @@ fun RecepcionistaHomeScreen(
                                     selectedViajeForEdit = viaje
                                     showDialog = true
                                 },
-                                onDelete = { viajeViewModel.eliminarViaje(viaje.id) }
+                                onDelete = { viajeViewModel.eliminarViaje(viaje.id) },
+                                onEstadoChange = { nuevoEstado ->
+                                    viajeViewModel.actualizarEstadoViaje(viaje.id, nuevoEstado)
+                                }
                             )
                         }
                     }
@@ -424,8 +428,16 @@ fun ViajeCardItem(
     viaje: Viaje,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
+    onEstadoChange: (String) -> Unit = {},
 ) {
-    var esActiva by remember { mutableStateOf(true) }
+    var estadoMenuExpanded by remember { mutableStateOf(false) }
+
+    val (badgeBgColor, badgeTextColor, badgeTexto) = when (viaje.estado.uppercase()) {
+        "AGOTADO" -> Triple(Color(0xFFFFEBEE), Color(0xFFC62828), "🔴 Agotado")
+        "EN RUTA" -> Triple(Color(0xFFE3F2FD), Color(0xFF1565C0), "🚌 En Ruta")
+        "FINALIZADO" -> Triple(Color(0xFF424242), Color.White, "⚫ Finalizado")
+        else -> Triple(Color(0xFFE8F5E9), Color(0xFF2E7D32), "🟢 En Venta")
+    }
 
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
@@ -443,28 +455,49 @@ fun ViajeCardItem(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "${viaje.origen} ➔ ${viaje.destino}",
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1C1B1B),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = viaje.origen,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1C1B1B),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    Text(
+                        text = " ➔ ",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = PrimaryRedHex,
+                        modifier = Modifier.padding(horizontal = 2.dp)
+                    )
+                    Text(
+                        text = viaje.destino,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1C1B1B),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                }
 
                 Spacer(modifier = Modifier.width(12.dp))
 
-                // Badge de Estado
+                // Badge de Estado Dinámico
                 Surface(
-                    color = if (esActiva) Color(0xFFE8F5E9) else Color(0xFFEEEEEE),
+                    color = badgeBgColor,
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
-                        text = if (esActiva) "🟢 Activa · En venta" else "⚪ Inactiva",
+                        text = badgeTexto,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (esActiva) Color(0xFF2E7D32) else Color(0xFF616161),
+                        color = badgeTextColor,
                         maxLines = 1,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
@@ -564,10 +597,19 @@ fun ViajeCardItem(
                         )
                     }
 
-                    // Fila 4 (Progreso de Asientos)
+                    // Fila 4 (Progreso de Asientos Dinámico)
                     val totales = if (viaje.asientosTotales > 0) viaje.asientosTotales else 15
-                    val disponibles = if (viaje.asientosDisponibles >= 0) viaje.asientosDisponibles else 10
-                    val progreso = (disponibles.toFloat() / totales.toFloat()).coerceIn(0f, 1f)
+                    val ocupados = viaje.asientosOcupados.coerceAtLeast(0)
+                    val asientosLibres = (totales - ocupados).coerceAtLeast(0)
+                    val progreso = if (totales > 0) (ocupados.toFloat() / totales.toFloat()).coerceIn(0f, 1f) else 0f
+
+                    val estaAgotado = asientosLibres == 0
+                    val colorAsientos = if (estaAgotado) Color.DarkGray else PrimaryRedHex
+                    val textoAsientos = if (estaAgotado) {
+                        "0 libres / $totales totales (Agotado)"
+                    } else {
+                        "$asientosLibres libres / $totales totales"
+                    }
 
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Row(
@@ -580,10 +622,10 @@ fun ViajeCardItem(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = "$disponibles libres / $totales totales",
+                                text = textoAsientos,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = PrimaryRedHex
+                                color = colorAsientos
                             )
                         }
                         LinearProgressIndicator(
@@ -591,8 +633,8 @@ fun ViajeCardItem(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(6.dp),
-                            color = PrimaryRedHex,
-                            trackColor = PrimaryRedHex.copy(alpha = 0.15f),
+                            color = colorAsientos,
+                            trackColor = colorAsientos.copy(alpha = 0.15f),
                         )
                     }
                 }
@@ -628,21 +670,51 @@ fun ViajeCardItem(
                     )
                 }
 
-                // 2. Botón Activar / Inactivar
-                OutlinedButton(
-                    onClick = { esActiva = !esActiva },
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(
-                        text = if (esActiva) "Inactivar" else "Activar",
-                        color = Color.DarkGray,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                // 2. Botón Cambiar Estado (Dropdown)
+                Box(modifier = Modifier.weight(1f)) {
+                    OutlinedButton(
+                        onClick = { estadoMenuExpanded = true },
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Estado",
+                            color = Color.DarkGray,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = estadoMenuExpanded,
+                        onDismissRequest = { estadoMenuExpanded = false }
+                    ) {
+                        val estados = listOf("EN VENTA", "AGOTADO", "EN RUTA", "FINALIZADO")
+                        estados.forEach { est ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = when (est) {
+                                            "EN VENTA" -> "🟢 En Venta"
+                                            "AGOTADO" -> "🔴 Agotado"
+                                            "EN RUTA" -> "🚌 En Ruta"
+                                            "FINALIZADO" -> "⚫ Finalizado"
+                                            else -> est
+                                        },
+                                        fontSize = 13.sp,
+                                        fontWeight = if (viaje.estado.equals(est, ignoreCase = true)) FontWeight.Bold else FontWeight.Normal
+                                    )
+                                },
+                                onClick = {
+                                    onEstadoChange(est)
+                                    estadoMenuExpanded = false
+                                }
+                            )
+                        }
+                    }
                 }
 
                 // 3. Botón Eliminar
@@ -1035,6 +1107,8 @@ fun CrearEditarRutaDialog(
                         val conductorNombre = conductorSeleccionado?.nombreCompleto ?: viajeInicial?.conductor ?: ""
                         val conductorUid = conductorSeleccionado?.uid ?: viajeInicial?.idConductor ?: ""
 
+                        val cap = vehiculoSeleccionado?.capacidad ?: 15
+
                         if (viajeInicial == null) {
                             val viajeNuevo = Viaje(
                                 origen = origen,
@@ -1046,9 +1120,17 @@ fun CrearEditarRutaDialog(
                                 fecha = fecha.ifBlank { "20/05/2025" },
                                 horaSalida = horaSalida.ifBlank { "08:00 a. m." },
                                 precio = precio,
+                                asientosTotales = cap,
+                                asientosOcupados = 0,
+                                asientosDisponibles = cap,
+                                estado = "EN VENTA",
                             )
-                            onSaveNew(viajeNuevo, vehiculo?.capacidad ?: 15)
+                            onSaveNew(viajeNuevo, cap)
                         } else {
+                            val capEditado = vehiculoSeleccionado?.capacidad ?: viajeInicial.asientosTotales
+                            val ocupados = viajeInicial.asientosOcupados
+                            val disponibles = (capEditado - ocupados).coerceAtLeast(0)
+
                             val viajeEditado = viajeInicial.copy(
                                 origen = origen,
                                 destino = destino,
@@ -1059,6 +1141,9 @@ fun CrearEditarRutaDialog(
                                 fecha = fecha.ifBlank { viajeInicial.fecha },
                                 horaSalida = horaSalida.ifBlank { viajeInicial.horaSalida },
                                 precio = precio,
+                                asientosTotales = capEditado,
+                                asientosOcupados = ocupados,
+                                asientosDisponibles = disponibles,
                             )
                             onUpdate(viajeEditado)
                         }

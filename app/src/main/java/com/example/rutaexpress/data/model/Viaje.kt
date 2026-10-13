@@ -17,6 +17,8 @@ data class Viaje(
     @get:PropertyName("horaSalida") @set:PropertyName("horaSalida") var horaSalida: String = "",
     @get:PropertyName("precio") @set:PropertyName("precio") var precio: Double = 0.0,
     @get:PropertyName("asientosTotales") @set:PropertyName("asientosTotales") var asientosTotales: Int = 15,
-    @get:PropertyName("asientosDisponibles") @set:PropertyName("asientosDisponibles") var asientosDisponibles: Int = 10,
+    @get:PropertyName("asientosOcupados") @set:PropertyName("asientosOcupados") var asientosOcupados: Int = 0,
+    @get:PropertyName("asientosDisponibles") @set:PropertyName("asientosDisponibles") var asientosDisponibles: Int = 15,
+    @get:PropertyName("estado") @set:PropertyName("estado") var estado: String = "EN VENTA",
     @get:PropertyName("createdAt") @set:PropertyName("createdAt") var createdAt: Long = System.currentTimeMillis(),
 )

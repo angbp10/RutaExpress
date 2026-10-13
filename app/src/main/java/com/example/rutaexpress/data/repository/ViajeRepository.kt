@@ -68,13 +68,17 @@ class ViajeRepository {
         return runCatching {
             val batch = firestore.batch()
 
+            val numAsientos = if (capacidad > 0) capacidad else 15
+            viaje.asientosTotales = numAsientos
+            viaje.asientosDisponibles = numAsientos
+            viaje.asientosOcupados = 0
+
             // 1. Asignar ID e insertar documento del viaje
             val viajeRef = viajesCollection.document()
             viaje.id = viajeRef.id
             batch.set(viajeRef, viaje)
 
             // 2. Generar N asientos (del 1 al número de capacidad)
-            val numAsientos = if (capacidad > 0) capacidad else 15
             for (i in 1..numAsientos) {
                 val asientoRef = asientosCollection.document()
                 val asiento = Asiento(
@@ -97,6 +101,14 @@ class ViajeRepository {
         return runCatching {
             require(viaje.id.isNotBlank()) { "ID de viaje inválido" }
             viajesCollection.document(viaje.id).set(viaje).await()
+            Unit
+        }
+    }
+
+    suspend fun actualizarEstadoViaje(viajeId: String, nuevoEstado: String): Result<Unit> {
+        return runCatching {
+            require(viajeId.isNotBlank()) { "ID de viaje inválido" }
+            viajesCollection.document(viajeId).update("estado", nuevoEstado).await()
             Unit
         }
     }

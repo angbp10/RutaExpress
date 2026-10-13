@@ -104,6 +104,30 @@ class ViajeViewModel(
         }
     }
 
+    fun actualizarEstadoViaje(viajeId: String, nuevoEstado: String) {
+        if (viajeId.isBlank()) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            val result = repository.actualizarEstadoViaje(viajeId, nuevoEstado)
+            result.onSuccess {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        successMessage = "Estado del viaje actualizado a '$nuevoEstado'.",
+                    )
+                }
+            }.onFailure { ex ->
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = ex.localizedMessage ?: "Error al actualizar el estado del viaje.",
+                    )
+                }
+            }
+        }
+    }
+
     fun eliminarViaje(id: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }

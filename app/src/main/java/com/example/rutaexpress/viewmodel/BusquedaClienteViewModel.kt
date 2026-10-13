@@ -103,7 +103,7 @@ class BusquedaClienteViewModel : ViewModel() {
     }
 
     /**
-     * Realiza la consulta a la colección "viajes" en Firestore filtrando por origen, destino y fecha.
+     * Realiza la consulta a la colección "viajes" en Firestore filtrando por origen, destino, fecha y estado EN VENTA.
      */
     fun buscarSalidas() {
         val current = _uiState.value
@@ -113,6 +113,7 @@ class BusquedaClienteViewModel : ViewModel() {
             .whereEqualTo("origen", current.origen)
             .whereEqualTo("destino", current.destino)
             .whereEqualTo("fecha", current.fechaSeleccionada)
+            .whereEqualTo("estado", "EN VENTA")
             .get()
             .addOnSuccessListener { snapshot ->
                 val lista = snapshot.toObjects(Viaje::class.java)
