@@ -107,6 +107,7 @@ fun BusquedaClienteScreen(
     viewModel: BusquedaClienteViewModel = viewModel(),
     onMenuClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
+    onSeleccionarAsientosClick: (String) -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -317,7 +318,10 @@ fun BusquedaClienteScreen(
 
                 // Tarjetas de Resultados
                 items(uiState.resultadosBusqueda, key = { it.id }) { viaje ->
-                    ResultadoViajeCard(viaje = viaje)
+                    ResultadoViajeCard(
+                        viaje = viaje,
+                        onSeleccionarAsientosClick = onSeleccionarAsientosClick
+                    )
                 }
             }
 
@@ -675,7 +679,10 @@ fun AgenciaDropdownMenu(
 }
 
 @Composable
-fun ResultadoViajeCard(viaje: Viaje) {
+fun ResultadoViajeCard(
+    viaje: Viaje,
+    onSeleccionarAsientosClick: (String) -> Unit = {},
+) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -780,7 +787,7 @@ fun ResultadoViajeCard(viaje: Viaje) {
 
             // Botón Seleccionar Asientos
             Button(
-                onClick = {},
+                onClick = { onSeleccionarAsientosClick(viaje.id) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(44.dp),

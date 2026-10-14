@@ -11,7 +11,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.rutaexpress.ui.cliente.BusquedaClienteScreen
-import com.example.rutaexpress.ui.home.ClienteHomeScreen
+import com.example.rutaexpress.ui.cliente.SeleccionAsientosScreen
 import com.example.rutaexpress.ui.home.ConductorHomeScreen
 import com.example.rutaexpress.ui.home.RecepcionistaHomeScreen
 import com.example.rutaexpress.ui.login.LoginScreen
@@ -169,6 +169,22 @@ fun AppNavigation() {
                     navController.navigate("login") {
                         popUpTo("home_cliente") { inclusive = true }
                     }
+                },
+                onSeleccionarAsientosClick = { viajeId ->
+                    navController.navigate("seleccion_asientos/$viajeId")
+                }
+            )
+        }
+
+        composable("seleccion_asientos/{viajeId}") { backStackEntry ->
+            val viajeId = backStackEntry.arguments?.getString("viajeId").orEmpty()
+            SeleccionAsientosScreen(
+                viajeId = viajeId,
+                onBackClick = {
+                    navController.popBackStack()
+                },
+                onConfirmSuccess = {
+                    navController.popBackStack()
                 }
             )
         }
