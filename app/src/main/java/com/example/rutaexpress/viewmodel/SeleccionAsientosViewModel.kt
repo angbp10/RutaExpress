@@ -3,7 +3,11 @@ package com.example.rutaexpress.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.rutaexpress.data.model.Asiento
+import com.example.rutaexpress.data.model.Pasajero
+import com.example.rutaexpress.data.model.Reserva
 import com.example.rutaexpress.data.model.Viaje
+import com.example.rutaexpress.data.repository.DniRepository
+import com.example.rutaexpress.data.repository.ViajeRepository
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,6 +15,17 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
+/**
+ * Estado del formulario de entrada de un pasajero.
+ */
+data class PasajeroInputState(
+    val asientoNumero: Int = 0,
+    val dni: String = "",
+    val nombres: String = "",
+    val isLoadingDni: Boolean = false,
+    val errorDni: String? = null,
+)
 
 /**
  * Estado UI reactivo para la pantalla de Selección de Asientos.
@@ -22,6 +37,11 @@ data class SeleccionAsientosUiState(
     val isLoading: Boolean = true,
     val errorMessage: String? = null,
     val successMessage: String? = null,
+    // HU18 state
+    val mostrarDialogoPasajeros: Boolean = false,
+    val pasajerosInputs: List<PasajeroInputState> = emptyList(),
+    val reservaCreada: Reserva? = null,
+    val mostrarDialogoResumen: Boolean = false,
 )
 
 /**
@@ -30,6 +50,8 @@ data class SeleccionAsientosUiState(
 class SeleccionAsientosViewModel : ViewModel() {
 
     private val firestore by lazy { FirebaseFirestore.getInstance() }
+    private val dniRepository by lazy { DniRepository() }
+    private val viajeRepository by lazy { ViajeRepository() }
 
     private val _uiState = MutableStateFlow(SeleccionAsientosUiState())
     val uiState: StateFlow<SeleccionAsientosUiState> = _uiState.asStateFlow()
@@ -37,7 +59,8 @@ class SeleccionAsientosViewModel : ViewModel() {
     private var currentViajeId: String = ""
 
     /**
-     * Carga el viaje y escucha en tiempo real la colección/subcolección de asientos.
+     * Carga el viaje y escucha en tiempo real la colección de asientos.
+     * Evalúa automáticamente expiración de 5 minutos en asientos en estado "reservado".
      */
     fun cargarViajeYAsientos(viajeId: String) {
         if (viajeId.isBlank()) return
@@ -78,14 +101,26 @@ class SeleccionAsientosViewModel : ViewModel() {
                 }
 
                 val asientosRecuperados = snapshot?.toObjects(Asiento::class.java).orEmpty()
+                val ahora = System.currentTimeMillis()
 
                 _uiState.update { state ->
                     val viajeObj = state.viaje
                     val totales = viajeObj?.asientosTotales ?: 15
 
-                    // Generar lista final completando asientos si Firestore no los tiene aún
-                    val listaFinal = if (asientosRecuperados.isNotEmpty()) {
-                        asientosRecuperados.sortedBy { it.numero }
+                    // Evaluar expiración de 5 min: si está reservado pero expiró, considerar disponible
+                    val asientosProcesados = asientosRecuperados.map { asiento ->
+                        if (asiento.estado.equals("reservado", ignoreCase = true) &&
+                            asiento.reservaExpiraAt > 0 && ahora > asiento.reservaExpiraAt
+                        ) {
+                            asiento.copy(estado = "disponible", reservaExpiraAt = 0L, idReserva = "")
+                        } else {
+                            asiento
+                        }
+                    }
+
+                    // Generar lista final
+                    val listaFinal = if (asientosProcesados.isNotEmpty()) {
+                        asientosProcesados.sortedBy { it.numero }
                     } else {
                         (1..totales).map { num ->
                             Asiento(
@@ -97,9 +132,14 @@ class SeleccionAsientosViewModel : ViewModel() {
                         }
                     }
 
-                    // Limpiar seleccionados que hayan cambiado a ocupado
+                    // Limpiar seleccionados que hayan cambiado a ocupado/reservado activo
                     val idsOcupados = listaFinal
-                        .filter { it.estado.lowercase() != "disponible" }
+                        .filter { asiento ->
+                            val esOcupado = asiento.estado.lowercase() == "ocupado"
+                            val esReservadoActivo = asiento.estado.lowercase() == "reservado" &&
+                                    (asiento.reservaExpiraAt == 0L || ahora <= asiento.reservaExpiraAt)
+                            esOcupado || esReservadoActivo
+                        }
                         .map { it.id }
                         .toSet()
 
@@ -120,7 +160,11 @@ class SeleccionAsientosViewModel : ViewModel() {
      * Alterna la selección de un asiento disponible.
      */
     fun toggleSeleccionAsiento(asiento: Asiento) {
-        if (asiento.estado.lowercase() != "disponible") return
+        val ahora = System.currentTimeMillis()
+        val esDisponible = asiento.estado.lowercase() == "disponible" ||
+                (asiento.estado.lowercase() == "reservado" && asiento.reservaExpiraAt > 0 && ahora > asiento.reservaExpiraAt)
+
+        if (!esDisponible) return
 
         _uiState.update { state ->
             val actuales = state.asientosSeleccionadosIds.toMutableSet()
@@ -134,7 +178,186 @@ class SeleccionAsientosViewModel : ViewModel() {
     }
 
     /**
-     * Confirma la reserva de los asientos elegidos y actualiza la ocupación en Firestore.
+     * Prepara e inicia el flujo de HU18 (Ingreso de pasajeros para reserva temporal).
+     */
+    fun abrirRegistroPasajeros() {
+        val state = _uiState.value
+        if (state.asientosSeleccionadosIds.isEmpty()) return
+
+        val asientosSeleccionados = state.asientosList
+            .filter { state.asientosSeleccionadosIds.contains(it.id) }
+            .sortedBy { it.numero }
+
+        val inputs = asientosSeleccionados.map { asiento ->
+            PasajeroInputState(asientoNumero = asiento.numero)
+        }
+
+        _uiState.update {
+            it.copy(
+                mostrarDialogoPasajeros = true,
+                pasajerosInputs = inputs
+            )
+        }
+    }
+
+    fun cerrarRegistroPasajeros() {
+        _uiState.update { it.copy(mostrarDialogoPasajeros = false) }
+    }
+
+    fun onPasajeroDniChanged(index: Int, nuevoDni: String) {
+        if (nuevoDni.length > 8) return
+        _uiState.update { state ->
+            val nuevaLista = state.pasajerosInputs.toMutableList()
+            if (index in nuevaLista.indices) {
+                nuevaLista[index] = nuevaLista[index].copy(dni = nuevoDni, errorDni = null)
+            }
+            state.copy(pasajerosInputs = nuevaLista)
+        }
+    }
+
+    fun onPasajeroNombresChanged(index: Int, nuevosNombres: String) {
+        _uiState.update { state ->
+            val nuevaLista = state.pasajerosInputs.toMutableList()
+            if (index in nuevaLista.indices) {
+                nuevaLista[index] = nuevaLista[index].copy(nombres = nuevosNombres)
+            }
+            state.copy(pasajerosInputs = nuevaLista)
+        }
+    }
+
+    /**
+     * Consulta el DNI de un pasajero mediante Retrofit / DniRepository.
+     */
+    fun consultarDniPasajero(index: Int) {
+        val state = _uiState.value
+        if (index !in state.pasajerosInputs.indices) return
+        val input = state.pasajerosInputs[index]
+        if (input.dni.length != 8) {
+            _uiState.update { st ->
+                val lista = st.pasajerosInputs.toMutableList()
+                lista[index] = lista[index].copy(errorDni = "DNI debe tener 8 dígitos")
+                st.copy(pasajerosInputs = lista)
+            }
+            return
+        }
+
+        _uiState.update { st ->
+            val lista = st.pasajerosInputs.toMutableList()
+            lista[index] = lista[index].copy(isLoadingDni = true, errorDni = null)
+            st.copy(pasajerosInputs = lista)
+        }
+
+        viewModelScope.launch {
+            val result = dniRepository.consultarDni(input.dni)
+            result.onSuccess { data ->
+                val nombreCompleto = listOfNotNull(
+                    data.nombres,
+                    data.apellidoPaterno,
+                    data.apellidoMaterno
+                ).joinToString(" ").trim()
+
+                _uiState.update { st ->
+                    val lista = st.pasajerosInputs.toMutableList()
+                    if (index in lista.indices) {
+                        lista[index] = lista[index].copy(
+                            nombres = if (nombreCompleto.isNotBlank()) nombreCompleto else lista[index].nombres,
+                            isLoadingDni = false
+                        )
+                    }
+                    st.copy(pasajerosInputs = lista)
+                }
+            }.onFailure { ex ->
+                _uiState.update { st ->
+                    val lista = st.pasajerosInputs.toMutableList()
+                    if (index in lista.indices) {
+                        lista[index] = lista[index].copy(
+                            isLoadingDni = false,
+                            errorDni = ex.localizedMessage ?: "Error al consultar DNI"
+                        )
+                    }
+                    st.copy(pasajerosInputs = lista)
+                }
+            }
+        }
+    }
+
+    /**
+     * Procesa y registra la Reserva Temporal de 5 minutos en Firestore (HU18).
+     */
+    fun procesarReservaTemporal() {
+        val state = _uiState.value
+        val viaje = state.viaje ?: return
+        val seleccionadosIds = state.asientosSeleccionadosIds
+        if (seleccionadosIds.isEmpty()) return
+
+        // Validar que todos los campos de pasajeros estén completos
+        val incompletos = state.pasajerosInputs.any { it.dni.length != 8 || it.nombres.isBlank() }
+        if (incompletos) {
+            _uiState.update {
+                it.copy(errorMessage = "Por favor, ingresa DNI (8 dígitos) y Nombres para cada pasajero.")
+            }
+            return
+        }
+
+        val pasajeros = state.pasajerosInputs.map {
+            Pasajero(
+                dni = it.dni.trim(),
+                nombres = it.nombres.trim(),
+                asientoNumero = it.asientoNumero
+            )
+        }
+
+        val asientosNumeros = state.asientosList
+            .filter { seleccionadosIds.contains(it.id) }
+            .map { it.numero }
+            .sorted()
+
+        val montoTotal = viaje.precio * seleccionadosIds.size
+
+        val reserva = Reserva(
+            idViaje = viaje.id,
+            origen = viaje.origen,
+            destino = viaje.destino,
+            fechaViaje = viaje.fecha,
+            horaSalida = viaje.horaSalida,
+            asientos = asientosNumeros,
+            pasajeros = pasajeros,
+            estado = "RESERVADO",
+            montoTotal = montoTotal
+        )
+
+        _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+
+        viewModelScope.launch {
+            val result = viajeRepository.crearReservaTemporal(reserva, seleccionadosIds.toList())
+            result.onSuccess { reservaCreada ->
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        mostrarDialogoPasajeros = false,
+                        mostrarDialogoResumen = true,
+                        reservaCreada = reservaCreada,
+                        asientosSeleccionadosIds = emptySet(),
+                        successMessage = "¡Reserva temporal creada con éxito!"
+                    )
+                }
+            }.onFailure { ex ->
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = "Error al crear reserva: ${ex.localizedMessage}"
+                    )
+                }
+            }
+        }
+    }
+
+    fun cerrarDialogoResumen() {
+        _uiState.update { it.copy(mostrarDialogoResumen = false, reservaCreada = null) }
+    }
+
+    /**
+     * Confirma la reserva de los asientos elegidos directamente (método anterior mantenido por compatibilidad).
      */
     fun confirmarReserva(onSuccess: () -> Unit) {
         val current = _uiState.value

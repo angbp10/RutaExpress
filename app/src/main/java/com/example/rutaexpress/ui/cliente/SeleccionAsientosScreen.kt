@@ -104,6 +104,31 @@ fun SeleccionAsientosScreen(
     val seleccionados = uiState.asientosSeleccionadosIds
     val precioTotal = viaje.precio * seleccionados.size
 
+    // Modal de Registro de Pasajeros (HU18)
+    if (uiState.mostrarDialogoPasajeros) {
+        RegistroPasajerosBottomSheet(
+            pasajerosInputs = uiState.pasajerosInputs,
+            isLoading = uiState.isLoading,
+            onDniChanged = { index, dni -> viewModel.onPasajeroDniChanged(index, dni) },
+            onNombresChanged = { index, nombres -> viewModel.onPasajeroNombresChanged(index, nombres) },
+            onConsultarDni = { index -> viewModel.consultarDniPasajero(index) },
+            onDismiss = { viewModel.cerrarRegistroPasajeros() },
+            onConfirmarReserva = { viewModel.procesarReservaTemporal() }
+        )
+    }
+
+    // Diálogo Resumen de Reserva con Temporizador de 5 minutos (HU18)
+    if (uiState.mostrarDialogoResumen && uiState.reservaCreada != null) {
+        ResumenReservaDialog(
+            reserva = uiState.reservaCreada!!,
+            onDismiss = { viewModel.cerrarDialogoResumen() },
+            onVolverInicio = {
+                viewModel.cerrarDialogoResumen()
+                onConfirmSuccess()
+            }
+        )
+    }
+
     Scaffold(
         containerColor = BackgroundSurfaceHex,
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
@@ -138,7 +163,7 @@ fun SeleccionAsientosScreen(
                 precioTotal = precioTotal,
                 isLoading = uiState.isLoading,
                 onConfirmarClick = {
-                    viewModel.confirmarReserva(onConfirmSuccess)
+                    viewModel.abrirRegistroPasajeros()
                 }
             )
         }
