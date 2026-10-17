@@ -18,5 +18,7 @@ data class Reserva(
     @get:PropertyName("estado") @set:PropertyName("estado") var estado: String = "RESERVADO",
     @get:PropertyName("montoTotal") @set:PropertyName("montoTotal") var montoTotal: Double = 0.0,
     @get:PropertyName("createdAt") @set:PropertyName("createdAt") var createdAt: Long = System.currentTimeMillis(),
-    @get:PropertyName("expiresAt") @set:PropertyName("expiresAt") var expiresAt: Long = System.currentTimeMillis() + (5 * 60 * 1000)
+    @get:PropertyName("expiresAt") @set:PropertyName("expiresAt") var expiresAt: Long = System.currentTimeMillis() + (5 * 60 * 1000),
+    @get:PropertyName("medioPago") @set:PropertyName("medioPago") var medioPago: String = "",
+    @get:PropertyName("fechaPago") @set:PropertyName("fechaPago") var fechaPago: Long = 0L
 )

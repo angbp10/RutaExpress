@@ -15,6 +15,7 @@ import com.example.rutaexpress.ui.cliente.SeleccionAsientosScreen
 import com.example.rutaexpress.ui.home.ConductorHomeScreen
 import com.example.rutaexpress.ui.home.RecepcionistaHomeScreen
 import com.example.rutaexpress.ui.login.LoginScreen
+import com.example.rutaexpress.ui.recepcionista.CobroReservaScreen
 import com.example.rutaexpress.ui.recepcionista.EncomiendaScreen
 import com.example.rutaexpress.ui.recepcionista.GestionEstadosScreen
 import com.example.rutaexpress.ui.recepcionista.RecepcionistaProfileScreen
@@ -122,6 +123,17 @@ fun AppNavigation() {
                 },
                 onNavigateToGestion = {
                     navController.navigate("encomienda_gestion")
+                },
+                onNavigateToCobroReserva = {
+                    navController.navigate("cobro_reserva")
+                }
+            )
+        }
+
+        composable("cobro_reserva") {
+            CobroReservaScreen(
+                onBackClick = {
+                    navController.popBackStack()
                 }
             )
         }

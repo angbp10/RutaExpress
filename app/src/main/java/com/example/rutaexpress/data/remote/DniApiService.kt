@@ -39,7 +39,7 @@ data class DniData(
  */
 interface DniApiService {
     @Headers(
-        "Authorization: Bearer 4f6b4b487171804a46683cf5b6ac096402e22b0409444e4fff9b475962d7",
+        "Authorization: Bearer 4248f2bbcb9419dceca762a09aa93ef0",
         "Content-Type: application/json",
     )
     @POST("api/dni")

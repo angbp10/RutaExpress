@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Assignment
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.ConfirmationNumber
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.filled.Edit
@@ -114,6 +115,7 @@ fun RecepcionistaHomeScreen(
     onNavigateToProfile: () -> Unit = {},
     onNavigateToEmision: () -> Unit = {},
     onNavigateToGestion: () -> Unit = {},
+    onNavigateToCobroReserva: () -> Unit = {},
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -243,6 +245,17 @@ fun RecepcionistaHomeScreen(
                     onClick = {
                         scope.launch { drawerState.close() }
                         onNavigateToGestion()
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
+
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.ConfirmationNumber, contentDescription = null, tint = PrimaryRedHex) },
+                    label = { Text("Cobro de Reservas y Pasajes", fontWeight = FontWeight.Bold) },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onNavigateToCobroReserva()
                     },
                     modifier = Modifier.padding(horizontal = 12.dp)
                 )

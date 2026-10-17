@@ -102,39 +102,13 @@ fun RegistroPasajerosBottomSheet(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Cabecera
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "DATOS DE PASAJEROS",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = PrimaryRedHex,
-                        letterSpacing = 1.sp
-                    )
-                    Text(
-                        text = "Requerido para emitir el boleto de reserva temporal",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                Surface(
-                    color = SoftPinkBackground,
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text(
-                        text = "Reserva 5 min",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = PrimaryRedHex,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                    )
-                }
-            }
+            Text(
+                text = "DATOS DE PASAJEROS",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = PrimaryRedHex,
+                letterSpacing = 1.sp
+            )
 
             // Lista de formularios por cada asiento
             pasajerosInputs.forEachIndexed { index, input ->
@@ -259,8 +233,9 @@ fun RegistroPasajerosBottomSheet(
                         strokeWidth = 2.dp
                     )
                 } else {
+                    val textoBoton = if (pasajerosInputs.size == 1) "Reservar Asiento" else "Reservar Asientos"
                     Text(
-                        text = "Generar Reserva Temporal (5 min)",
+                        text = textoBoton,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
