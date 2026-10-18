@@ -74,8 +74,44 @@ class BusquedaClienteViewModel : ViewModel() {
         _uiState.update { it.copy(destino = nuevoDestino) }
     }
 
+    private fun esFechaPasada(fechaStr: String): Boolean {
+        return try {
+            val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).apply {
+                isLenient = false
+            }
+            val fechaSeleccionada = sdf.parse(fechaStr) ?: return false
+
+            val calHoy = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+
+            val calSeleccionada = Calendar.getInstance().apply {
+                time = fechaSeleccionada
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+
+            calSeleccionada.before(calHoy)
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     fun onFechaChanged(nuevaFecha: String) {
-        _uiState.update { it.copy(fechaSeleccionada = nuevaFecha) }
+        if (esFechaPasada(nuevaFecha)) {
+            _uiState.update {
+                it.copy(
+                    errorMessage = "No puedes consultar salidas para fechas pasadas."
+                )
+            }
+            return
+        }
+        _uiState.update { it.copy(fechaSeleccionada = nuevaFecha, errorMessage = null) }
     }
 
     /**
@@ -107,6 +143,17 @@ class BusquedaClienteViewModel : ViewModel() {
      */
     fun buscarSalidas() {
         val current = _uiState.value
+        if (esFechaPasada(current.fechaSeleccionada)) {
+            _uiState.update {
+                it.copy(
+                    errorMessage = "No puedes consultar salidas para fechas pasadas.",
+                    resultadosBusqueda = emptyList(),
+                    haBuscado = true
+                )
+            }
+            return
+        }
+
         _uiState.update { it.copy(isLoading = true, haBuscado = true, errorMessage = null) }
 
         firestore.collection("viajes")

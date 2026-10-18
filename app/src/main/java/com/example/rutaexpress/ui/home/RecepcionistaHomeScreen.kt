@@ -116,6 +116,7 @@ fun RecepcionistaHomeScreen(
     onNavigateToEmision: () -> Unit = {},
     onNavigateToGestion: () -> Unit = {},
     onNavigateToCobroReserva: () -> Unit = {},
+    onNavigateToBusquedaSalidas: () -> Unit = {},
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -256,6 +257,17 @@ fun RecepcionistaHomeScreen(
                     onClick = {
                         scope.launch { drawerState.close() }
                         onNavigateToCobroReserva()
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
+
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.Search, contentDescription = null, tint = PrimaryRedHex) },
+                    label = { Text("Búsqueda de Salidas Directas", fontWeight = FontWeight.Bold) },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onNavigateToBusquedaSalidas()
                     },
                     modifier = Modifier.padding(horizontal = 12.dp)
                 )

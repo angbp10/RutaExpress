@@ -126,6 +126,24 @@ fun AppNavigation() {
                 },
                 onNavigateToCobroReserva = {
                     navController.navigate("cobro_reserva")
+                },
+                onNavigateToBusquedaSalidas = {
+                    navController.navigate("busqueda_recepcionista")
+                }
+            )
+        }
+
+        composable("busqueda_recepcionista") {
+            BusquedaClienteScreen(
+                esModoRecepcionista = true,
+                onMenuClick = {
+                    navController.popBackStack()
+                },
+                onProfileClick = {
+                    navController.navigate("profile_recepcionista")
+                },
+                onSeleccionarAsientosClick = { viajeId ->
+                    navController.navigate("seleccion_asientos/$viajeId")
                 }
             )
         }

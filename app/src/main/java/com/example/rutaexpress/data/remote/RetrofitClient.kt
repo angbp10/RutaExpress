@@ -4,10 +4,10 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 /**
- * Cliente singleton de Retrofit configurado con la URL base de json.pe.
+ * Cliente singleton de Retrofit configurado con la URL base de PeruAPI.
  */
 object RetrofitClient {
-    private const val BASE_URL = "https://api.json.pe/"
+    private const val BASE_URL = "https://peruapi.com/"
 
     val dniApiService: DniApiService by lazy {
         Retrofit.Builder()

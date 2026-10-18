@@ -1,6 +1,7 @@
 package com.example.rutaexpress.ui.cliente
 
 import android.app.DatePickerDialog
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -22,6 +23,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.AccountCircle
@@ -108,6 +110,7 @@ fun BusquedaClienteScreen(
     onMenuClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
     onSeleccionarAsientosClick: (String) -> Unit = {},
+    esModoRecepcionista: Boolean = false,
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -123,6 +126,13 @@ fun BusquedaClienteScreen(
     val mananaStr = sdf.format(calManana.time)
     val mananaLabel = "Mañana (${sdfShort.format(calManana.time)})"
 
+    LaunchedEffect(uiState.errorMessage) {
+        uiState.errorMessage?.let { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            viewModel.clearErrorMessage()
+        }
+    }
+
     // DatePicker nativo
     val calendar = Calendar.getInstance()
     val datePickerDialog = remember {
@@ -135,7 +145,16 @@ fun BusquedaClienteScreen(
             calendar.get(Calendar.YEAR),
             calendar.get(Calendar.MONTH),
             calendar.get(Calendar.DAY_OF_MONTH)
-        )
+        ).apply {
+            // Deshabilitar días pasados en el calendario nativo
+            val calHoy = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+            datePicker.minDate = calHoy.timeInMillis
+        }
     }
 
     Scaffold(
@@ -144,8 +163,8 @@ fun BusquedaClienteScreen(
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        text = "BÚSQUEDA",
-                        fontSize = 16.sp,
+                        text = if (esModoRecepcionista) "BÚSQUEDA DE SALIDAS (RECEPCIÓN)" else "BÚSQUEDA",
+                        fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
                         color = PrimaryRedHex,
                         letterSpacing = 1.2.sp
@@ -154,8 +173,8 @@ fun BusquedaClienteScreen(
                 navigationIcon = {
                     IconButton(onClick = onMenuClick) {
                         Icon(
-                            imageVector = Icons.Default.Menu,
-                            contentDescription = "Menú",
+                            imageVector = if (esModoRecepcionista) Icons.AutoMirrored.Filled.ArrowBack else Icons.Default.Menu,
+                            contentDescription = if (esModoRecepcionista) "Volver al Panel Administrativo" else "Menú",
                             tint = TextPrimaryHex
                         )
                     }
@@ -176,39 +195,41 @@ fun BusquedaClienteScreen(
             )
         },
         bottomBar = {
-            NavigationBar(
-                containerColor = Color.White,
-                tonalElevation = 8.dp
-            ) {
-                NavigationBarItem(
-                    selected = selectedBottomTab == 0,
-                    onClick = { selectedBottomTab = 0 },
-                    icon = { Icon(Icons.Default.Schedule, contentDescription = "Schedules") },
-                    label = { Text("Schedules", fontSize = 11.sp) },
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = PrimaryRedHex,
-                        selectedTextColor = PrimaryRedHex,
-                        indicatorColor = PrimaryRedHex.copy(alpha = 0.1f)
+            if (!esModoRecepcionista) {
+                NavigationBar(
+                    containerColor = Color.White,
+                    tonalElevation = 8.dp
+                ) {
+                    NavigationBarItem(
+                        selected = selectedBottomTab == 0,
+                        onClick = { selectedBottomTab = 0 },
+                        icon = { Icon(Icons.Default.Schedule, contentDescription = "Schedules") },
+                        label = { Text("Schedules", fontSize = 11.sp) },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = PrimaryRedHex,
+                            selectedTextColor = PrimaryRedHex,
+                            indicatorColor = PrimaryRedHex.copy(alpha = 0.1f)
+                        )
                     )
-                )
-                NavigationBarItem(
-                    selected = selectedBottomTab == 1,
-                    onClick = { selectedBottomTab = 1 },
-                    icon = { Icon(Icons.Default.ConfirmationNumber, contentDescription = "My Trips") },
-                    label = { Text("My Trips", fontSize = 11.sp) }
-                )
-                NavigationBarItem(
-                    selected = selectedBottomTab == 2,
-                    onClick = { selectedBottomTab = 2 },
-                    icon = { Icon(Icons.AutoMirrored.Filled.ReceiptLong, contentDescription = "Tickets") },
-                    label = { Text("Tickets", fontSize = 11.sp) }
-                )
-                NavigationBarItem(
-                    selected = selectedBottomTab == 3,
-                    onClick = { selectedBottomTab = 3 },
-                    icon = { Icon(Icons.Default.Person, contentDescription = "Profile") },
-                    label = { Text("Profile", fontSize = 11.sp) }
-                )
+                    NavigationBarItem(
+                        selected = selectedBottomTab == 1,
+                        onClick = { selectedBottomTab = 1 },
+                        icon = { Icon(Icons.Default.ConfirmationNumber, contentDescription = "My Trips") },
+                        label = { Text("My Trips", fontSize = 11.sp) }
+                    )
+                    NavigationBarItem(
+                        selected = selectedBottomTab == 2,
+                        onClick = { selectedBottomTab = 2 },
+                        icon = { Icon(Icons.AutoMirrored.Filled.ReceiptLong, contentDescription = "Tickets") },
+                        label = { Text("Tickets", fontSize = 11.sp) }
+                    )
+                    NavigationBarItem(
+                        selected = selectedBottomTab == 3,
+                        onClick = { selectedBottomTab = 3 },
+                        icon = { Icon(Icons.Default.Person, contentDescription = "Profile") },
+                        label = { Text("Profile", fontSize = 11.sp) }
+                    )
+                }
             }
         }
     ) { innerPadding ->
