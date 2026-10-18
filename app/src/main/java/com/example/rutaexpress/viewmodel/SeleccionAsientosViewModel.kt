@@ -7,6 +7,7 @@ import com.example.rutaexpress.data.model.Pasajero
 import com.example.rutaexpress.data.model.Reserva
 import com.example.rutaexpress.data.model.Viaje
 import com.example.rutaexpress.data.repository.DniRepository
+import com.example.rutaexpress.data.repository.ReservaRepository
 import com.example.rutaexpress.data.repository.ViajeRepository
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
@@ -15,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.LocalDateTime
 
 /**
  * Estado del formulario de entrada de un pasajero.
@@ -37,6 +39,8 @@ data class SeleccionAsientosUiState(
     val isLoading: Boolean = true,
     val errorMessage: String? = null,
     val successMessage: String? = null,
+    val isReservaBloqueada: Boolean = false,
+    val bloqueoMensaje: String = "",
     // HU18 state
     val mostrarDialogoPasajeros: Boolean = false,
     val pasajerosInputs: List<PasajeroInputState> = emptyList(),
@@ -57,14 +61,33 @@ class SeleccionAsientosViewModel : ViewModel() {
     val uiState: StateFlow<SeleccionAsientosUiState> = _uiState.asStateFlow()
 
     private var currentViajeId: String = ""
+    private var isRecepcionistaMode: Boolean = false
+
+    private fun evaluarBloqueo(viajeObj: Viaje?, esRecepcionista: Boolean): Pair<Boolean, String> {
+        if (viajeObj == null) return Pair(false, "")
+        return if (esRecepcionista) {
+            // Recepcionista: Solo se bloquea si la hora actual es estrictamente posterior a la hora de salida del bus
+            val salidaDt = ReservaRepository.parseSalidaDateTime(viajeObj.fecha, viajeObj.horaSalida)
+            val passed = salidaDt != null && LocalDateTime.now().isAfter(salidaDt)
+            val mensaje = "Este bus ya ha cumplido su hora de salida programada. No es posible asignar o vender nuevos pasajes para esta ruta."
+            Pair(passed, if (passed) mensaje else "")
+        } else {
+            // Cliente: Se bloquea si faltan 5 minutos o menos o ya pasó
+            val mins = ReservaRepository.calcularMinutosRestantesSalida(viajeObj.fecha, viajeObj.horaSalida)
+            val blocked = mins != null && mins <= 5
+            val mensaje = "Las reservas en línea cierran 5 minutos antes de la partida. Acércate a taquilla."
+            Pair(blocked, if (blocked) mensaje else "")
+        }
+    }
 
     /**
      * Carga el viaje y escucha en tiempo real la colección de asientos.
-     * Evalúa automáticamente expiración de 5 minutos en asientos en estado "reservado".
+     * Evalúa reglas diferenciadas por rol (Cliente vs Recepcionista).
      */
-    fun cargarViajeYAsientos(viajeId: String) {
+    fun cargarViajeYAsientos(viajeId: String, esRecepcionista: Boolean = false) {
         if (viajeId.isBlank()) return
         currentViajeId = viajeId
+        isRecepcionistaMode = esRecepcionista
         _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
         // 1. Escuchar viaje en tiempo real
@@ -82,7 +105,14 @@ class SeleccionAsientosViewModel : ViewModel() {
 
                 if (snapshot != null && snapshot.exists()) {
                     val viajeObj = snapshot.toObject(Viaje::class.java)
-                    _uiState.update { it.copy(viaje = viajeObj) }
+                    val (bloqueado, mensaje) = evaluarBloqueo(viajeObj, isRecepcionistaMode)
+                    _uiState.update {
+                        it.copy(
+                            viaje = viajeObj,
+                            isReservaBloqueada = bloqueado,
+                            bloqueoMensaje = mensaje
+                        )
+                    }
                 }
             }
 
@@ -106,6 +136,8 @@ class SeleccionAsientosViewModel : ViewModel() {
                 _uiState.update { state ->
                     val viajeObj = state.viaje
                     val totales = viajeObj?.asientosTotales ?: 15
+
+                    val (bloqueado, mensaje) = evaluarBloqueo(viajeObj, isRecepcionistaMode)
 
                     // Evaluar expiración de 5 min: si está reservado pero expiró, considerar disponible
                     val asientosProcesados = asientosRecuperados.map { asiento ->
@@ -143,13 +175,15 @@ class SeleccionAsientosViewModel : ViewModel() {
                         .map { it.id }
                         .toSet()
 
-                    val seleccionadosLimpios = state.asientosSeleccionadosIds
+                    val seleccionadosLimpios = if (bloqueado) emptySet() else state.asientosSeleccionadosIds
                         .filterNot { idsOcupados.contains(it) }
                         .toSet()
 
                     state.copy(
                         asientosList = listaFinal,
                         asientosSeleccionadosIds = seleccionadosLimpios,
+                        isReservaBloqueada = bloqueado,
+                        bloqueoMensaje = mensaje,
                         isLoading = false
                     )
                 }
@@ -160,20 +194,23 @@ class SeleccionAsientosViewModel : ViewModel() {
      * Alterna la selección de un asiento disponible.
      */
     fun toggleSeleccionAsiento(asiento: Asiento) {
+        val state = _uiState.value
+        if (state.isReservaBloqueada) return
+
         val ahora = System.currentTimeMillis()
         val esDisponible = asiento.estado.lowercase() == "disponible" ||
                 (asiento.estado.lowercase() == "reservado" && asiento.reservaExpiraAt > 0 && ahora > asiento.reservaExpiraAt)
 
         if (!esDisponible) return
 
-        _uiState.update { state ->
-            val actuales = state.asientosSeleccionadosIds.toMutableSet()
+        _uiState.update { st ->
+            val actuales = st.asientosSeleccionadosIds.toMutableSet()
             if (actuales.contains(asiento.id)) {
                 actuales.remove(asiento.id)
             } else {
                 actuales.add(asiento.id)
             }
-            state.copy(asientosSeleccionadosIds = actuales)
+            st.copy(asientosSeleccionadosIds = actuales)
         }
     }
 
@@ -182,7 +219,7 @@ class SeleccionAsientosViewModel : ViewModel() {
      */
     fun abrirRegistroPasajeros() {
         val state = _uiState.value
-        if (state.asientosSeleccionadosIds.isEmpty()) return
+        if (state.isReservaBloqueada || state.asientosSeleccionadosIds.isEmpty()) return
 
         val asientosSeleccionados = state.asientosList
             .filter { state.asientosSeleccionadosIds.contains(it.id) }
@@ -286,6 +323,15 @@ class SeleccionAsientosViewModel : ViewModel() {
      */
     fun procesarReservaTemporal() {
         val state = _uiState.value
+        if (state.isReservaBloqueada) {
+            _uiState.update {
+                it.copy(
+                    mostrarDialogoPasajeros = false,
+                    errorMessage = state.bloqueoMensaje.ifBlank { "Este viaje no se encuentra disponible." }
+                )
+            }
+            return
+        }
         val viaje = state.viaje ?: return
         val seleccionadosIds = state.asientosSeleccionadosIds
         if (seleccionadosIds.isEmpty()) return

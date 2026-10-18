@@ -2,6 +2,7 @@ package com.example.rutaexpress.viewmodel
 
 import androidx.lifecycle.ViewModel
 import com.example.rutaexpress.data.model.Viaje
+import com.example.rutaexpress.data.repository.ReservaRepository
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -188,5 +189,14 @@ class BusquedaClienteViewModel : ViewModel() {
 
     fun clearErrorMessage() {
         _uiState.update { it.copy(errorMessage = null) }
+    }
+
+    /**
+     * Compara LocalDateTime.now() con la fecha y hora de salida del viaje.
+     * Retorna true si la salida está a 5 minutos o menos (o si ya pasó la hora).
+     */
+    fun esReservaBloqueada(viaje: Viaje): Boolean {
+        val minutosRestantes = ReservaRepository.calcularMinutosRestantesSalida(viaje.fecha, viaje.horaSalida)
+        return minutosRestantes != null && minutosRestantes <= 5
     }
 }

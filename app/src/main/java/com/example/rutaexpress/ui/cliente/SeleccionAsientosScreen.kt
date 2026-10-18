@@ -24,6 +24,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.EventSeat
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -69,6 +70,7 @@ private val TextPrimaryHex = Color(0xFF1C1B1B)
 @Composable
 fun SeleccionAsientosScreen(
     viajeId: String,
+    esRecepcionista: Boolean = false,
     viewModel: SeleccionAsientosViewModel = viewModel(),
     onBackClick: () -> Unit = {},
     onConfirmSuccess: () -> Unit = {},
@@ -77,8 +79,8 @@ fun SeleccionAsientosScreen(
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(viajeId) {
-        viewModel.cargarViajeYAsientos(viajeId)
+    LaunchedEffect(viajeId, esRecepcionista) {
+        viewModel.cargarViajeYAsientos(viajeId, esRecepcionista)
     }
 
     LaunchedEffect(uiState.errorMessage, uiState.successMessage) {
@@ -162,6 +164,7 @@ fun SeleccionAsientosScreen(
                 cantidadSeleccionada = seleccionados.size,
                 precioTotal = precioTotal,
                 isLoading = uiState.isLoading,
+                isReservaBloqueada = uiState.isReservaBloqueada,
                 onConfirmarClick = {
                     viewModel.abrirRegistroPasajeros()
                 }
@@ -178,6 +181,11 @@ fun SeleccionAsientosScreen(
         ) {
             // 1. Banner Resumen
             BannerResumenViajeCard(viaje = viaje)
+
+            // Banner de Advertencia cuando el viaje está a 5 min o menos de salir
+            if (uiState.isReservaBloqueada) {
+                BannerReservaBloqueadaCard(mensaje = uiState.bloqueoMensaje)
+            }
 
             // 2. Leyenda de Estados
             LeyendaEstadosRow()
@@ -206,6 +214,7 @@ fun SeleccionAsientosScreen(
                     capacidadVehiculo = cap,
                     asientos = uiState.asientosList,
                     seleccionadosIds = seleccionados,
+                    isReservaBloqueada = uiState.isReservaBloqueada,
                     onAsientoClick = { asiento ->
                         viewModel.toggleSeleccionAsiento(asiento)
                     }
@@ -403,10 +412,43 @@ fun LeyendaEstadosRow() {
 }
 
 @Composable
+fun BannerReservaBloqueadaCard(mensaje: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE)),
+        border = BorderStroke(1.5.dp, PrimaryRedHex)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Warning,
+                contentDescription = "Advertencia",
+                tint = PrimaryRedHex,
+                modifier = Modifier.size(28.dp)
+            )
+            Text(
+                text = mensaje.ifBlank { "Este viaje no se encuentra disponible." },
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = PrimaryRedHex,
+                lineHeight = 18.sp
+            )
+        }
+    }
+}
+
+@Composable
 fun CroquisVehiculoCard(
     capacidadVehiculo: Int,
     asientos: List<Asiento>,
     seleccionadosIds: Set<String>,
+    isReservaBloqueada: Boolean = false,
     onAsientoClick: (Asiento) -> Unit,
 ) {
     Card(
@@ -478,12 +520,14 @@ fun CroquisVehiculoCard(
                 Croquis15Asientos(
                     asientos = asientos,
                     seleccionadosIds = seleccionadosIds,
+                    isReservaBloqueada = isReservaBloqueada,
                     onAsientoClick = onAsientoClick
                 )
             } else {
                 Croquis18Asientos(
                     asientos = asientos,
                     seleccionadosIds = seleccionadosIds,
+                    isReservaBloqueada = isReservaBloqueada,
                     onAsientoClick = onAsientoClick
                 )
             }
@@ -495,6 +539,7 @@ fun CroquisVehiculoCard(
 fun Croquis15Asientos(
     asientos: List<Asiento>,
     seleccionadosIds: Set<String>,
+    isReservaBloqueada: Boolean = false,
     onAsientoClick: (Asiento) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -505,8 +550,8 @@ fun Croquis15Asientos(
         ) {
             ChoferSlot(modifier = Modifier.weight(1f))
             SpacerSlot(modifier = Modifier.weight(1f))
-            AsientoSlot(1, asientos, seleccionadosIds, onAsientoClick, modifier = Modifier.weight(1f))
-            AsientoSlot(2, asientos, seleccionadosIds, onAsientoClick, modifier = Modifier.weight(1f))
+            AsientoSlot(1, asientos, seleccionadosIds, isReservaBloqueada, onAsientoClick, modifier = Modifier.weight(1f))
+            AsientoSlot(2, asientos, seleccionadosIds, isReservaBloqueada, onAsientoClick, modifier = Modifier.weight(1f))
         }
 
         // Fila 1: [ Asiento 3 ] [ Asiento 4 ] [ Asiento 5 ] [ Spacer ]
@@ -514,9 +559,9 @@ fun Croquis15Asientos(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            AsientoSlot(3, asientos, seleccionadosIds, onAsientoClick, modifier = Modifier.weight(1f))
-            AsientoSlot(4, asientos, seleccionadosIds, onAsientoClick, modifier = Modifier.weight(1f))
-            AsientoSlot(5, asientos, seleccionadosIds, onAsientoClick, modifier = Modifier.weight(1f))
+            AsientoSlot(3, asientos, seleccionadosIds, isReservaBloqueada, onAsientoClick, modifier = Modifier.weight(1f))
+            AsientoSlot(4, asientos, seleccionadosIds, isReservaBloqueada, onAsientoClick, modifier = Modifier.weight(1f))
+            AsientoSlot(5, asientos, seleccionadosIds, isReservaBloqueada, onAsientoClick, modifier = Modifier.weight(1f))
             SpacerSlot(modifier = Modifier.weight(1f))
         }
 
@@ -525,10 +570,10 @@ fun Croquis15Asientos(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            AsientoSlot(6, asientos, seleccionadosIds, onAsientoClick, modifier = Modifier.weight(1f))
-            AsientoSlot(7, asientos, seleccionadosIds, onAsientoClick, modifier = Modifier.weight(1f))
+            AsientoSlot(6, asientos, seleccionadosIds, isReservaBloqueada, onAsientoClick, modifier = Modifier.weight(1f))
+            AsientoSlot(7, asientos, seleccionadosIds, isReservaBloqueada, onAsientoClick, modifier = Modifier.weight(1f))
             PasilloSlot(modifier = Modifier.weight(1f))
-            AsientoSlot(8, asientos, seleccionadosIds, onAsientoClick, modifier = Modifier.weight(1f))
+            AsientoSlot(8, asientos, seleccionadosIds, isReservaBloqueada, onAsientoClick, modifier = Modifier.weight(1f))
         }
 
         // Fila 3: [ Asiento 9 ] [ Asiento 10 ] [ PASILLO ] [ Asiento 11 ]
@@ -536,10 +581,10 @@ fun Croquis15Asientos(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            AsientoSlot(9, asientos, seleccionadosIds, onAsientoClick, modifier = Modifier.weight(1f))
-            AsientoSlot(10, asientos, seleccionadosIds, onAsientoClick, modifier = Modifier.weight(1f))
+            AsientoSlot(9, asientos, seleccionadosIds, isReservaBloqueada, onAsientoClick, modifier = Modifier.weight(1f))
+            AsientoSlot(10, asientos, seleccionadosIds, isReservaBloqueada, onAsientoClick, modifier = Modifier.weight(1f))
             PasilloSlot(modifier = Modifier.weight(1f))
-            AsientoSlot(11, asientos, seleccionadosIds, onAsientoClick, modifier = Modifier.weight(1f))
+            AsientoSlot(11, asientos, seleccionadosIds, isReservaBloqueada, onAsientoClick, modifier = Modifier.weight(1f))
         }
 
         // Fila 4 (Última): [ Asiento 12 ] [ Asiento 13 ] [ Asiento 14 ] [ Asiento 15 ]
@@ -547,10 +592,10 @@ fun Croquis15Asientos(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            AsientoSlot(12, asientos, seleccionadosIds, onAsientoClick, modifier = Modifier.weight(1f))
-            AsientoSlot(13, asientos, seleccionadosIds, onAsientoClick, modifier = Modifier.weight(1f))
-            AsientoSlot(14, asientos, seleccionadosIds, onAsientoClick, modifier = Modifier.weight(1f))
-            AsientoSlot(15, asientos, seleccionadosIds, onAsientoClick, modifier = Modifier.weight(1f))
+            AsientoSlot(12, asientos, seleccionadosIds, isReservaBloqueada, onAsientoClick, modifier = Modifier.weight(1f))
+            AsientoSlot(13, asientos, seleccionadosIds, isReservaBloqueada, onAsientoClick, modifier = Modifier.weight(1f))
+            AsientoSlot(14, asientos, seleccionadosIds, isReservaBloqueada, onAsientoClick, modifier = Modifier.weight(1f))
+            AsientoSlot(15, asientos, seleccionadosIds, isReservaBloqueada, onAsientoClick, modifier = Modifier.weight(1f))
         }
     }
 }
@@ -559,6 +604,7 @@ fun Croquis15Asientos(
 fun Croquis18Asientos(
     asientos: List<Asiento>,
     seleccionadosIds: Set<String>,
+    isReservaBloqueada: Boolean = false,
     onAsientoClick: (Asiento) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -569,8 +615,8 @@ fun Croquis18Asientos(
         ) {
             ChoferSlot(modifier = Modifier.weight(1f))
             SpacerSlot(modifier = Modifier.weight(1f))
-            AsientoSlot(1, asientos, seleccionadosIds, onAsientoClick, modifier = Modifier.weight(1f))
-            AsientoSlot(2, asientos, seleccionadosIds, onAsientoClick, modifier = Modifier.weight(1f))
+            AsientoSlot(1, asientos, seleccionadosIds, isReservaBloqueada, onAsientoClick, modifier = Modifier.weight(1f))
+            AsientoSlot(2, asientos, seleccionadosIds, isReservaBloqueada, onAsientoClick, modifier = Modifier.weight(1f))
         }
 
         // Fila 1: [ Asiento 3 ] [ Asiento 4 ] [ Asiento 5 ] [ Spacer ]
@@ -578,9 +624,9 @@ fun Croquis18Asientos(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            AsientoSlot(3, asientos, seleccionadosIds, onAsientoClick, modifier = Modifier.weight(1f))
-            AsientoSlot(4, asientos, seleccionadosIds, onAsientoClick, modifier = Modifier.weight(1f))
-            AsientoSlot(5, asientos, seleccionadosIds, onAsientoClick, modifier = Modifier.weight(1f))
+            AsientoSlot(3, asientos, seleccionadosIds, isReservaBloqueada, onAsientoClick, modifier = Modifier.weight(1f))
+            AsientoSlot(4, asientos, seleccionadosIds, isReservaBloqueada, onAsientoClick, modifier = Modifier.weight(1f))
+            AsientoSlot(5, asientos, seleccionadosIds, isReservaBloqueada, onAsientoClick, modifier = Modifier.weight(1f))
             SpacerSlot(modifier = Modifier.weight(1f))
         }
 
@@ -589,10 +635,10 @@ fun Croquis18Asientos(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            AsientoSlot(6, asientos, seleccionadosIds, onAsientoClick, modifier = Modifier.weight(1f))
-            AsientoSlot(7, asientos, seleccionadosIds, onAsientoClick, modifier = Modifier.weight(1f))
+            AsientoSlot(6, asientos, seleccionadosIds, isReservaBloqueada, onAsientoClick, modifier = Modifier.weight(1f))
+            AsientoSlot(7, asientos, seleccionadosIds, isReservaBloqueada, onAsientoClick, modifier = Modifier.weight(1f))
             PasilloSlot(modifier = Modifier.weight(1f))
-            AsientoSlot(8, asientos, seleccionadosIds, onAsientoClick, modifier = Modifier.weight(1f))
+            AsientoSlot(8, asientos, seleccionadosIds, isReservaBloqueada, onAsientoClick, modifier = Modifier.weight(1f))
         }
 
         // Fila 3: [ Asiento 9 ] [ Asiento 10 ] [ PASILLO ] [ Asiento 11 ]
@@ -600,10 +646,10 @@ fun Croquis18Asientos(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            AsientoSlot(9, asientos, seleccionadosIds, onAsientoClick, modifier = Modifier.weight(1f))
-            AsientoSlot(10, asientos, seleccionadosIds, onAsientoClick, modifier = Modifier.weight(1f))
+            AsientoSlot(9, asientos, seleccionadosIds, isReservaBloqueada, onAsientoClick, modifier = Modifier.weight(1f))
+            AsientoSlot(10, asientos, seleccionadosIds, isReservaBloqueada, onAsientoClick, modifier = Modifier.weight(1f))
             PasilloSlot(modifier = Modifier.weight(1f))
-            AsientoSlot(11, asientos, seleccionadosIds, onAsientoClick, modifier = Modifier.weight(1f))
+            AsientoSlot(11, asientos, seleccionadosIds, isReservaBloqueada, onAsientoClick, modifier = Modifier.weight(1f))
         }
 
         // Fila 4: [ Asiento 12 ] [ Asiento 13 ] [ PASILLO ] [ Asiento 14 ]
@@ -611,10 +657,10 @@ fun Croquis18Asientos(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            AsientoSlot(12, asientos, seleccionadosIds, onAsientoClick, modifier = Modifier.weight(1f))
-            AsientoSlot(13, asientos, seleccionadosIds, onAsientoClick, modifier = Modifier.weight(1f))
+            AsientoSlot(12, asientos, seleccionadosIds, isReservaBloqueada, onAsientoClick, modifier = Modifier.weight(1f))
+            AsientoSlot(13, asientos, seleccionadosIds, isReservaBloqueada, onAsientoClick, modifier = Modifier.weight(1f))
             PasilloSlot(modifier = Modifier.weight(1f))
-            AsientoSlot(14, asientos, seleccionadosIds, onAsientoClick, modifier = Modifier.weight(1f))
+            AsientoSlot(14, asientos, seleccionadosIds, isReservaBloqueada, onAsientoClick, modifier = Modifier.weight(1f))
         }
 
         // Fila 5 (Última): [ Asiento 15 ] [ Asiento 16 ] [ Asiento 17 ] [ Asiento 18 ]
@@ -622,10 +668,10 @@ fun Croquis18Asientos(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            AsientoSlot(15, asientos, seleccionadosIds, onAsientoClick, modifier = Modifier.weight(1f))
-            AsientoSlot(16, asientos, seleccionadosIds, onAsientoClick, modifier = Modifier.weight(1f))
-            AsientoSlot(17, asientos, seleccionadosIds, onAsientoClick, modifier = Modifier.weight(1f))
-            AsientoSlot(18, asientos, seleccionadosIds, onAsientoClick, modifier = Modifier.weight(1f))
+            AsientoSlot(15, asientos, seleccionadosIds, isReservaBloqueada, onAsientoClick, modifier = Modifier.weight(1f))
+            AsientoSlot(16, asientos, seleccionadosIds, isReservaBloqueada, onAsientoClick, modifier = Modifier.weight(1f))
+            AsientoSlot(17, asientos, seleccionadosIds, isReservaBloqueada, onAsientoClick, modifier = Modifier.weight(1f))
+            AsientoSlot(18, asientos, seleccionadosIds, isReservaBloqueada, onAsientoClick, modifier = Modifier.weight(1f))
         }
     }
 }
@@ -635,6 +681,7 @@ fun AsientoSlot(
     numero: Int,
     asientos: List<Asiento>,
     seleccionadosIds: Set<String>,
+    isReservaBloqueada: Boolean = false,
     onClick: (Asiento) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -647,6 +694,7 @@ fun AsientoSlot(
             AsientoItem(
                 asiento = asiento,
                 esElegido = seleccionadosIds.contains(asiento.id),
+                isReservaBloqueada = isReservaBloqueada,
                 onClick = { onClick(asiento) }
             )
         } else {
@@ -711,9 +759,10 @@ fun ChoferSlot(modifier: Modifier = Modifier) {
 fun AsientoItem(
     asiento: Asiento,
     esElegido: Boolean,
+    isReservaBloqueada: Boolean = false,
     onClick: () -> Unit,
 ) {
-    val esOcupado = asiento.estado.lowercase() != "disponible"
+    val esOcupado = asiento.estado.lowercase() != "disponible" || isReservaBloqueada
 
     val (bgColor, borderColor, contentColor) = when {
         esOcupado -> Triple(Color(0xFFEEEEEE), Color(0xFFBDBDBD), Color.Gray)
@@ -756,6 +805,7 @@ fun BarraInferiorConfirmacion(
     cantidadSeleccionada: Int,
     precioTotal: Double,
     isLoading: Boolean,
+    isReservaBloqueada: Boolean = false,
     onConfirmarClick: () -> Unit,
 ) {
     Surface(
@@ -763,66 +813,102 @@ fun BarraInferiorConfirmacion(
         color = Color.White,
         shadowElevation = 12.dp
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "Total a pagar",
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+        if (isReservaBloqueada) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFFFFEBEE))
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = "Reservas cerradas",
+                    tint = PrimaryRedHex,
+                    modifier = Modifier.size(24.dp)
+                )
+                Text(
+                    text = "Reservas en línea cerradas (< 5 min). Por favor acércate a taquilla.",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = PrimaryRedHex,
+                    modifier = Modifier.weight(1f)
+                )
+                Button(
+                    onClick = {},
+                    enabled = false,
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        disabledContainerColor = Color(0xFFE0E0E0),
+                        disabledContentColor = Color.Gray
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Surface(
-                        color = Color(0xFFE8F5E9),
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
+                ) {
+                    Text("Cerrado", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = "Mano incl.",
-                            fontSize = 9.sp,
+                            text = "Total a pagar",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Surface(
+                            color = Color(0xFFE8F5E9),
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                text = "Mano incl.",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF2E7D32),
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                    Text(
+                        text = "S/ ${"%.2f".format(precioTotal)}",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = PrimaryRedHex
+                    )
+                }
+
+                Button(
+                    onClick = onConfirmarClick,
+                    enabled = cantidadSeleccionada > 0 && !isLoading,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PrimaryRedHex,
+                        disabledContainerColor = Color(0xFFFFCDD2),
+                        disabledContentColor = Color.White
+                    ),
+                    modifier = Modifier.height(46.dp)
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text(
+                            text = if (cantidadSeleccionada > 0) "Confirmar ($cantidadSeleccionada) ➔" else "Selecciona Asiento",
+                            fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF2E7D32),
-                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                            color = Color.White
                         )
                     }
-                }
-                Text(
-                    text = "S/ ${"%.2f".format(precioTotal)}",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = PrimaryRedHex
-                )
-            }
-
-            Button(
-                onClick = onConfirmarClick,
-                enabled = cantidadSeleccionada > 0 && !isLoading,
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = PrimaryRedHex,
-                    disabledContainerColor = Color(0xFFFFCDD2),
-                    disabledContentColor = Color.White
-                ),
-                modifier = Modifier.height(46.dp)
-            ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        color = Color.White,
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    Text(
-                        text = if (cantidadSeleccionada > 0) "Confirmar ($cantidadSeleccionada) ➔" else "Selecciona Asiento",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
                 }
             }
         }

@@ -2,6 +2,10 @@ package com.example.rutaexpress.ui.cliente
 
 import android.app.DatePickerDialog
 import android.widget.Toast
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.ZoneId
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -38,6 +42,8 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.Warning
+import com.example.rutaexpress.data.repository.ReservaRepository
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -133,8 +139,14 @@ fun BusquedaClienteScreen(
         }
     }
 
-    // DatePicker nativo
+    // DatePicker nativo corregido con zona horaria UTC
     val calendar = Calendar.getInstance()
+    val todayUtcMillis = remember {
+        LocalDate.now()
+            .atStartOfDay(ZoneId.of("UTC"))
+            .toInstant()
+            .toEpochMilli()
+    }
     val datePickerDialog = remember {
         DatePickerDialog(
             context,
@@ -146,14 +158,7 @@ fun BusquedaClienteScreen(
             calendar.get(Calendar.MONTH),
             calendar.get(Calendar.DAY_OF_MONTH)
         ).apply {
-            // Deshabilitar días pasados en el calendario nativo
-            val calHoy = Calendar.getInstance().apply {
-                set(Calendar.HOUR_OF_DAY, 0)
-                set(Calendar.MINUTE, 0)
-                set(Calendar.SECOND, 0)
-                set(Calendar.MILLISECOND, 0)
-            }
-            datePicker.minDate = calHoy.timeInMillis
+            datePicker.minDate = todayUtcMillis
         }
     }
 
@@ -341,6 +346,7 @@ fun BusquedaClienteScreen(
                 items(uiState.resultadosBusqueda, key = { it.id }) { viaje ->
                     ResultadoViajeCard(
                         viaje = viaje,
+                        esRecepcionista = esModoRecepcionista,
                         onSeleccionarAsientosClick = onSeleccionarAsientosClick
                     )
                 }
@@ -702,8 +708,33 @@ fun AgenciaDropdownMenu(
 @Composable
 fun ResultadoViajeCard(
     viaje: Viaje,
+    esRecepcionista: Boolean = false,
     onSeleccionarAsientosClick: (String) -> Unit = {},
 ) {
+    val isReservaBloqueada = remember(viaje.fecha, viaje.horaSalida, esRecepcionista) {
+        if (esRecepcionista) {
+            // Recepcionista: Solo se bloquea si la hora actual es estrictamente posterior a la hora de salida del bus
+            val salidaDt = ReservaRepository.parseSalidaDateTime(viaje.fecha, viaje.horaSalida)
+            salidaDt != null && LocalDateTime.now().isAfter(salidaDt)
+        } else {
+            // Cliente: Se bloquea si faltan 5 minutos o menos (o si ya pasó)
+            val minutosRestantes = ReservaRepository.calcularMinutosRestantesSalida(viaje.fecha, viaje.horaSalida)
+            minutosRestantes != null && minutosRestantes <= 5
+        }
+    }
+
+    val mensajeBloqueo = if (esRecepcionista) {
+        "Este bus ya ha cumplido su hora de salida programada. No es posible asignar o vender nuevos pasajes para esta ruta."
+    } else {
+        "Este viaje está a punto de partir (menos de 5 minutos). Las reservas en línea están cerradas, por favor acércate a taquilla."
+    }
+
+    val textoBotonBloqueado = if (esRecepcionista) {
+        "Salida Finalizada (Hora cumplida)"
+    } else {
+        "Reservas en línea cerradas (< 5 min)"
+    }
+
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -804,34 +835,78 @@ fun ResultadoViajeCard(
                 )
             }
 
+            // Banner o tarjeta de advertencia en rojo si está bloqueado
+            if (isReservaBloqueada) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Color(0xFFFFEBEE),
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(1.dp, PrimaryRedHex)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = "Bloqueado",
+                            tint = PrimaryRedHex,
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Text(
+                            text = mensajeBloqueo,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = PrimaryRedHex,
+                            lineHeight = 15.sp
+                        )
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(2.dp))
 
             // Botón Seleccionar Asientos
             Button(
                 onClick = { onSeleccionarAsientosClick(viaje.id) },
+                enabled = !isReservaBloqueada,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(44.dp),
                 shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryRedHex)
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = PrimaryRedHex,
+                    disabledContainerColor = Color(0xFFFFCDD2),
+                    disabledContentColor = Color.White
+                )
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
+                if (isReservaBloqueada) {
                     Text(
-                        text = "Seleccionar Asientos",
-                        fontSize = 14.sp,
+                        text = textoBotonBloqueado,
+                        fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(18.dp)
-                    )
+                } else {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "Seleccionar Asientos",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             }
         }

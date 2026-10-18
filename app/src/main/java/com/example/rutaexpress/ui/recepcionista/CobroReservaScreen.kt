@@ -384,6 +384,7 @@ fun CobroReservaScreen(
             } else if (uiState.reservaEncontrada != null) {
                 val reserva = uiState.reservaEncontrada!!
                 val esPagado = reserva.estado.equals("PAGADO", ignoreCase = true)
+                val esExpirado = reserva.estado.equals("EXPIRADO", ignoreCase = true)
 
                 // Tarjeta de Detalle de Reserva
                 Card(
@@ -422,7 +423,11 @@ fun CobroReservaScreen(
                                 shape = RoundedCornerShape(8.dp)
                             ) {
                                 Text(
-                                    text = if (esPagado) "🟢 PAGADO" else "🔴 RESERVADO",
+                                    text = when {
+                                        esPagado -> "🟢 PAGADO"
+                                        esExpirado -> "🔴 EXPIRADO"
+                                        else -> "🔴 RESERVADO"
+                                    },
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = if (esPagado) Color(0xFF2E7D32) else PrimaryRedHex,
@@ -522,8 +527,43 @@ fun CobroReservaScreen(
                             )
                         }
 
-                        // Formas de Pago y Confirmación si NO está pagado
-                        if (!esPagado) {
+                        // Formas de Pago y Confirmación si NO está pagado y NO está expirado
+                        if (esExpirado) {
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                color = SoftPinkBackground,
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(1.5.dp, PrimaryRedHex)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(14.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.ConfirmationNumber,
+                                            contentDescription = null,
+                                            tint = PrimaryRedHex,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Text(
+                                            text = "Reserva Expirada por Tiempo de Salida",
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = PrimaryRedHex
+                                        )
+                                    }
+                                    Text(
+                                        text = "Esta reserva ha expirado porque faltan menos de 5 minutos para la salida del vehículo. El asiento ha sido liberado.",
+                                        fontSize = 12.sp,
+                                        color = Color.DarkGray
+                                    )
+                                }
+                            }
+                        } else if (!esPagado) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -740,7 +780,7 @@ fun CobroReservaScreen(
                                     )
                                 }
                             }
-                        } else {
+                        } else if (esPagado) {
                             Text(
                                 text = "Esta reserva ya fue cobrada (${reserva.medioPago}) y el pasaje está activo.",
                                 fontSize = 12.sp,

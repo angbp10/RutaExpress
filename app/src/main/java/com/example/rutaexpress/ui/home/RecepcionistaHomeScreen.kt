@@ -2,6 +2,11 @@ package com.example.rutaexpress.ui.home
 
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import android.widget.Toast
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -813,8 +818,14 @@ fun CrearEditarRutaDialog(
         )
     }
 
-    // DatePicker nativo
+    // DatePicker nativo corregido con zona horaria UTC
     val calendar = Calendar.getInstance()
+    val todayUtcMillis = remember {
+        LocalDate.now()
+            .atStartOfDay(ZoneId.of("UTC"))
+            .toInstant()
+            .toEpochMilli()
+    }
     val datePickerDialog = remember {
         DatePickerDialog(
             context,
@@ -824,7 +835,9 @@ fun CrearEditarRutaDialog(
             calendar.get(Calendar.YEAR),
             calendar.get(Calendar.MONTH),
             calendar.get(Calendar.DAY_OF_MONTH)
-        )
+        ).apply {
+            datePicker.minDate = todayUtcMillis
+        }
     }
 
     // TimePicker nativo
@@ -1127,6 +1140,18 @@ fun CrearEditarRutaDialog(
 
                 Button(
                     onClick = {
+                        val formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.forLanguageTag("es-ES"))
+                        val fechaSeleccionada = try {
+                            LocalDate.parse(fecha.trim(), formatter)
+                        } catch (_: Exception) {
+                            null
+                        }
+                        val hoy = LocalDate.now()
+                        if (fechaSeleccionada == null || fechaSeleccionada.isBefore(hoy)) {
+                            Toast.makeText(context, "No se pueden programar salidas para fechas pasadas", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+
                         val precio = precioText.toDoubleOrNull() ?: 20.0
                         val vehiculo = vehiculoSeleccionado
                         val conductorNombre = conductorSeleccionado?.nombreCompleto ?: viajeInicial?.conductor ?: ""

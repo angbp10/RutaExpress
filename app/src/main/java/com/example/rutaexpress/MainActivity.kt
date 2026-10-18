@@ -10,6 +10,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import com.example.rutaexpress.ui.cliente.BusquedaClienteScreen
 import com.example.rutaexpress.ui.cliente.SeleccionAsientosScreen
 import com.example.rutaexpress.ui.home.ConductorHomeScreen
@@ -142,8 +144,8 @@ fun AppNavigation() {
                 onProfileClick = {
                     navController.navigate("profile_recepcionista")
                 },
-                onSeleccionarAsientosClick = { viajeId ->
-                    navController.navigate("seleccion_asientos/$viajeId")
+                onSeleccionarAsientosClick = { viajeId: String ->
+                    navController.navigate("seleccion_asientos/$viajeId?esRecepcionista=true")
                 }
             )
         }
@@ -200,16 +202,24 @@ fun AppNavigation() {
                         popUpTo("home_cliente") { inclusive = true }
                     }
                 },
-                onSeleccionarAsientosClick = { viajeId ->
-                    navController.navigate("seleccion_asientos/$viajeId")
+                onSeleccionarAsientosClick = { viajeId: String ->
+                    navController.navigate("seleccion_asientos/$viajeId?esRecepcionista=false")
                 }
             )
         }
 
-        composable("seleccion_asientos/{viajeId}") { backStackEntry ->
+        composable(
+            route = "seleccion_asientos/{viajeId}?esRecepcionista={esRecepcionista}",
+            arguments = listOf(
+                navArgument("viajeId") { type = NavType.StringType },
+                navArgument("esRecepcionista") { type = NavType.BoolType; defaultValue = false }
+            )
+        ) { backStackEntry ->
             val viajeId = backStackEntry.arguments?.getString("viajeId").orEmpty()
+            val esRecepcionista = backStackEntry.arguments?.getBoolean("esRecepcionista") ?: false
             SeleccionAsientosScreen(
                 viajeId = viajeId,
+                esRecepcionista = esRecepcionista,
                 onBackClick = {
                     navController.popBackStack()
                 },
