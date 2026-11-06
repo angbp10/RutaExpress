@@ -2,6 +2,9 @@ package com.example.rutaexpress.data.repository
 
 import com.example.rutaexpress.data.model.Reserva
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -236,6 +239,136 @@ class ReservaRepository {
             }
 
             batch.commit().await()
+            Unit
+        }
+    }
+
+    /**
+     * Obtiene una reserva específica por su ID de Firestore.
+     */
+    suspend fun obtenerReservaPorId(reservaId: String): Result<Reserva?> {
+        return runCatching {
+            require(reservaId.isNotBlank()) { "ID de reserva no válido" }
+            val doc = reservasCollection.document(reservaId).get().await()
+            doc.toObject(Reserva::class.java)
+        }
+    }
+
+    /**
+     * Envía la información de pago de la reserva para validación por recepción (HU17):
+     * Actualiza numeroOperacion, metodoPago y estadoPago = "EN_REVISION".
+     */
+    suspend fun enviarPagoAValidacion(
+        reservaId: String,
+        numeroOperacion: String,
+        metodoPago: String
+    ): Result<Unit> {
+        return runCatching {
+            require(reservaId.isNotBlank()) { "ID de reserva no válido" }
+            require(numeroOperacion.isNotBlank()) { "El número de operación no puede estar vacío" }
+            val cleanOp = numeroOperacion.trim()
+            require(cleanOp.length in 6..8 && cleanOp.all { it.isDigit() }) {
+                "El número de operación debe tener entre 6 y 8 dígitos numéricos"
+            }
+
+            reservasCollection.document(reservaId).update(
+                mapOf(
+                    "numeroOperacion" to cleanOp,
+                    "metodoPago" to metodoPago,
+                    "medioPago" to metodoPago,
+                    "estadoPago" to "EN_REVISION"
+                )
+            ).await()
+            Unit
+        }
+    }
+
+    /**
+     * Escucha en tiempo real todas las reservas que se encuentren en estadoPago == "EN_REVISION" (HU10).
+     */
+    fun obtenerReservasEnRevisionFlow(): Flow<List<Reserva>> = callbackFlow {
+        val listener = reservasCollection
+            .whereEqualTo("estadoPago", "EN_REVISION")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+                val reservas = snapshot?.documents?.mapNotNull { doc ->
+                    doc.toObject(Reserva::class.java)?.apply {
+                        if (id.isBlank()) id = doc.id
+                    }
+                } ?: emptyList()
+
+                // Ordenar por más recientes primero
+                trySend(reservas.sortedByDescending { it.createdAt })
+            }
+
+        awaitClose { listener.remove() }
+    }
+
+    /**
+     * Aprueba el pago por transferencia de la reserva (HU10):
+     * Actualiza estadoPago = "PAGADO", estado = "PAGADO" y marca asientos como ocupados en Firestore.
+     */
+    suspend fun aprobarPagoReserva(reservaId: String): Result<Unit> {
+        return runCatching {
+            require(reservaId.isNotBlank()) { "ID de reserva no válido" }
+            val batch = firestore.batch()
+            val reservaRef = reservasCollection.document(reservaId)
+            val reservaSnap = reservaRef.get().await()
+            require(reservaSnap.exists()) { "Reserva no encontrada" }
+
+            val reserva = reservaSnap.toObject(Reserva::class.java)
+                ?: throw IllegalStateException("Error al leer datos de la reserva")
+
+            val ahora = System.currentTimeMillis()
+
+            batch.update(
+                reservaRef, mapOf(
+                    "estadoPago" to "PAGADO",
+                    "estado" to "PAGADO",
+                    "fechaPago" to ahora
+                )
+            )
+
+            if (reserva.idViaje.isNotBlank() && reserva.asientos.isNotEmpty()) {
+                val asientosSnapshot = asientosCollection
+                    .whereEqualTo("idViaje", reserva.idViaje)
+                    .get()
+                    .await()
+
+                asientosSnapshot.documents.forEach { doc ->
+                    val num = doc.getLong("numero")?.toInt() ?: -1
+                    if (reserva.asientos.contains(num)) {
+                        batch.update(
+                            doc.reference, mapOf(
+                                "estado" to "ocupado",
+                                "reservaExpiraAt" to 0L,
+                                "idReserva" to reserva.id
+                            )
+                        )
+                    }
+                }
+            }
+
+            batch.commit().await()
+            Unit
+        }
+    }
+
+    /**
+     * Rechaza el pago por transferencia de la reserva (HU10):
+     * Actualiza estadoPago = "RECHAZADO".
+     */
+    suspend fun rechazarPagoReserva(reservaId: String): Result<Unit> {
+        return runCatching {
+            require(reservaId.isNotBlank()) { "ID de reserva no válido" }
+            reservasCollection.document(reservaId).update(
+                mapOf(
+                    "estadoPago" to "RECHAZADO"
+                )
+            ).await()
             Unit
         }
     }

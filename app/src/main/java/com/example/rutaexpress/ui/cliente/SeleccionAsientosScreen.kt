@@ -74,6 +74,7 @@ fun SeleccionAsientosScreen(
     viewModel: SeleccionAsientosViewModel = viewModel(),
     onBackClick: () -> Unit = {},
     onConfirmSuccess: () -> Unit = {},
+    onNavegarAPago: (String) -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -127,6 +128,10 @@ fun SeleccionAsientosScreen(
             onVolverInicio = {
                 viewModel.cerrarDialogoResumen()
                 onConfirmSuccess()
+            },
+            onPagarConYapePlin = { reservaId ->
+                viewModel.cerrarDialogoResumen()
+                onNavegarAPago(reservaId)
             }
         )
     }

@@ -122,6 +122,7 @@ fun RecepcionistaHomeScreen(
     onNavigateToGestion: () -> Unit = {},
     onNavigateToCobroReserva: () -> Unit = {},
     onNavigateToBusquedaSalidas: () -> Unit = {},
+    onNavigateToValidacionPagos: () -> Unit = {},
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -262,6 +263,17 @@ fun RecepcionistaHomeScreen(
                     onClick = {
                         scope.launch { drawerState.close() }
                         onNavigateToCobroReserva()
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
+
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.AttachMoney, contentDescription = null, tint = PrimaryRedHex) },
+                    label = { Text("Validación de Pagos (Yape/Plin)", fontWeight = FontWeight.Bold) },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onNavigateToValidacionPagos()
                     },
                     modifier = Modifier.padding(horizontal = 12.dp)
                 )

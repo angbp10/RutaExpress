@@ -256,6 +256,7 @@ fun ResumenReservaDialog(
     reserva: Reserva,
     onDismiss: () -> Unit,
     onVolverInicio: () -> Unit,
+    onPagarConYapePlin: ((String) -> Unit)? = null,
 ) {
     val context = LocalContext.current
 
@@ -491,7 +492,29 @@ fun ResumenReservaDialog(
                     }
                 }
 
-                // Botones de Acción
+                // Botón Principal Pagar por Yape / Plin (HU17)
+                if (onPagarConYapePlin != null && reserva.id.isNotBlank()) {
+                    Button(
+                        onClick = {
+                            onDismiss()
+                            onPagarConYapePlin(reserva.id)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryRedHex)
+                    ) {
+                        Text(
+                            text = "Pagar por Yape / Plin (S/ ${"%.2f".format(reserva.montoTotal)}) ➔",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                }
+
+                // Botones Secundarios de Acción
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -506,7 +529,7 @@ fun ResumenReservaDialog(
                         },
                         modifier = Modifier
                             .weight(1f)
-                            .height(46.dp),
+                            .height(44.dp),
                         shape = RoundedCornerShape(12.dp),
                         border = BorderStroke(1.5.dp, PrimaryRedHex)
                     ) {
@@ -526,26 +549,26 @@ fun ResumenReservaDialog(
                     }
 
                     // Botón Volver al Inicio
-                    Button(
+                    OutlinedButton(
                         onClick = onVolverInicio,
                         modifier = Modifier
                             .weight(1f)
-                            .height(46.dp),
+                            .height(44.dp),
                         shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryRedHex)
+                        border = BorderStroke(1.dp, Color.Gray.copy(alpha = 0.5f))
                     ) {
                         Icon(
                             imageVector = Icons.Default.Home,
                             contentDescription = null,
-                            tint = Color.White,
+                            tint = Color.DarkGray,
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "Volver al Inicio",
+                            text = "Inicio",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = Color.DarkGray
                         )
                     }
                 }

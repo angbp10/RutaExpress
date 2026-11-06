@@ -13,6 +13,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import com.example.rutaexpress.ui.cliente.BusquedaClienteScreen
+import com.example.rutaexpress.ui.cliente.PagoClienteScreen
 import com.example.rutaexpress.ui.cliente.SeleccionAsientosScreen
 import com.example.rutaexpress.ui.home.ConductorHomeScreen
 import com.example.rutaexpress.ui.home.RecepcionistaHomeScreen
@@ -21,6 +22,7 @@ import com.example.rutaexpress.ui.recepcionista.CobroReservaScreen
 import com.example.rutaexpress.ui.recepcionista.EncomiendaScreen
 import com.example.rutaexpress.ui.recepcionista.GestionEstadosScreen
 import com.example.rutaexpress.ui.recepcionista.RecepcionistaProfileScreen
+import com.example.rutaexpress.ui.recepcionista.ValidacionPagosScreen
 import com.example.rutaexpress.ui.recepcionista.VehiculosCrudScreen
 import com.example.rutaexpress.ui.signup.SignUpScreen
 import com.example.rutaexpress.ui.theme.RutaExpressTheme
@@ -131,6 +133,9 @@ fun AppNavigation() {
                 },
                 onNavigateToBusquedaSalidas = {
                     navController.navigate("busqueda_recepcionista")
+                },
+                onNavigateToValidacionPagos = {
+                    navController.navigate("validacion_pagos")
                 }
             )
         }
@@ -152,6 +157,14 @@ fun AppNavigation() {
 
         composable("cobro_reserva") {
             CobroReservaScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable("validacion_pagos") {
+            ValidacionPagosScreen(
                 onBackClick = {
                     navController.popBackStack()
                 }
@@ -225,6 +238,29 @@ fun AppNavigation() {
                 },
                 onConfirmSuccess = {
                     navController.popBackStack()
+                },
+                onNavegarAPago = { reservaId ->
+                    navController.navigate("pago_cliente/$reservaId")
+                }
+            )
+        }
+
+        composable(
+            route = "pago_cliente/{reservaId}",
+            arguments = listOf(
+                navArgument("reservaId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val reservaId = backStackEntry.arguments?.getString("reservaId").orEmpty()
+            PagoClienteScreen(
+                reservaId = reservaId,
+                onBackClick = {
+                    navController.popBackStack()
+                },
+                onPagoEnviadoSuccess = {
+                    navController.navigate("home_cliente") {
+                        popUpTo("home_cliente") { inclusive = true }
+                    }
                 }
             )
         }
