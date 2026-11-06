@@ -4,7 +4,7 @@ import com.example.rutaexpress.data.remote.DniData
 import com.example.rutaexpress.data.remote.RetrofitClient
 
 /**
- * Repositorio encargado de la consulta de DNI mediante PeruAPI.
+ * Repositorio encargado de la consulta de DNI mediante json.pe.
  */
 class DniRepository {
     suspend fun consultarDni(dni: String): Result<DniData> {
@@ -13,14 +13,18 @@ class DniRepository {
             if (response.isSuccessful) {
                 val body = response.body()
                 if (body != null) {
-                    if (body.data != null) {
-                        body.data
-                    } else if (!body.nombres.isNullOrBlank() || !body.numero.isNullOrBlank()) {
+                    val dataObj = body.data
+                    val nombres = dataObj?.nombres ?: dataObj?.nombre ?: body.nombres ?: body.nombre
+                    val paterno = dataObj?.apellidoPaterno ?: dataObj?.paterno ?: body.apellidoPaterno ?: body.paterno
+                    val materno = dataObj?.apellidoMaterno ?: dataObj?.materno ?: body.apellidoMaterno ?: body.materno
+                    val numero = dataObj?.numero ?: dataObj?.dni ?: body.numero ?: body.dni ?: dni
+
+                    if (!nombres.isNullOrBlank() || !paterno.isNullOrBlank()) {
                         DniData(
-                            numero = body.numero ?: dni,
-                            nombres = body.nombres,
-                            apellidoPaterno = body.apellidoPaterno,
-                            apellidoMaterno = body.apellidoMaterno
+                            numero = numero,
+                            nombres = nombres,
+                            apellidoPaterno = paterno,
+                            apellidoMaterno = materno,
                         )
                     } else {
                         throw Exception(body.message ?: "No se encontraron datos para el DNI ingresado.")
