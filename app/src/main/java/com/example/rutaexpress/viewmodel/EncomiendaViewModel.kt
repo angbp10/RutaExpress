@@ -3,6 +3,7 @@ package com.example.rutaexpress.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.rutaexpress.data.model.Encomienda
+import com.example.rutaexpress.data.model.Movimiento
 import com.example.rutaexpress.data.repository.DniRepository
 import com.example.rutaexpress.data.repository.EncomiendaRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -118,7 +119,21 @@ class EncomiendaViewModel(
             val guiaFormateada = "e-${nuevoNumero.toString().padStart(7, '0')}"
             
             val tarifa = calcularTarifa(peso, tipoCarga)
-            
+
+            val currentUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+            val nombreUsuario = currentUser?.displayName?.takeIf { it.isNotBlank() }
+                ?: currentUser?.email?.substringBefore("@")?.takeIf { it.isNotBlank() }
+                ?: "Personal de Agencia"
+            val idUsuario = currentUser?.uid ?: "AGENCIA"
+            val ahora = System.currentTimeMillis()
+
+            val movimientoInicial = Movimiento(
+                estado = "En almacén",
+                fechaHora = ahora,
+                nombreUsuario = nombreUsuario,
+                idUsuario = idUsuario
+            )
+
             val encomienda = Encomienda(
                 guia = guiaFormateada,
                 remitente = remitente,
@@ -130,7 +145,10 @@ class EncomiendaViewModel(
                 pesoKg = peso,
                 tipoCarga = tipoCarga,
                 tarifaTotal = tarifa,
-                estado = "EN_ALMACEN"
+                estado = "En almacén",
+                estadoActual = "En almacén",
+                ultimaActualizacion = ahora,
+                historialMovimientos = listOf(movimientoInicial)
             )
 
             val result = repository.registrarEncomienda(encomienda)
@@ -188,19 +206,51 @@ class EncomiendaViewModel(
      * Actualiza el estado de una encomienda existente.
      */
     fun actualizarEstado(id: String, nuevoEstado: String) {
+        actualizarEstadoEncomienda(id, nuevoEstado)
+    }
+
+    /**
+     * Actualiza el estado de la encomienda registrando automáticamente la fecha, hora exacta y usuario (HU09).
+     */
+    fun actualizarEstadoEncomienda(encomiendaId: String, nuevoEstado: String) {
+        if (encomiendaId.isBlank() || nuevoEstado.isBlank()) return
+
+        val currentUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+        val nombreUsuario = currentUser?.displayName?.takeIf { it.isNotBlank() }
+            ?: currentUser?.email?.substringBefore("@")?.takeIf { it.isNotBlank() }
+            ?: "Personal de Agencia"
+        val idUsuario = currentUser?.uid ?: "AGENCIA"
+        val ahora = System.currentTimeMillis()
+
+        val movimiento = Movimiento(
+            estado = nuevoEstado,
+            fechaHora = ahora,
+            nombreUsuario = nombreUsuario,
+            idUsuario = idUsuario
+        )
+
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            val result = repository.actualizarEstado(id, nuevoEstado)
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            val result = repository.actualizarEstadoEncomienda(encomiendaId, nuevoEstado, movimiento)
             result.onSuccess {
-                _uiState.update { 
+                _uiState.update {
                     it.copy(
-                        isLoading = false, 
-                        successMessage = "Estado actualizado a $nuevoEstado",
-                        currentEncomienda = it.currentEncomienda?.copy(estado = nuevoEstado)
+                        isLoading = false,
+                        successMessage = "¡Estado de encomienda actualizado a '$nuevoEstado'!",
+                        currentEncomienda = it.currentEncomienda?.copy(
+                            estadoActual = nuevoEstado,
+                            estado = nuevoEstado,
+                            ultimaActualizacion = ahora
+                        )
                     )
                 }
             }.onFailure { ex ->
-                _uiState.update { it.copy(isLoading = false, errorMessage = ex.localizedMessage) }
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = "Error al actualizar estado: ${ex.localizedMessage}"
+                    )
+                }
             }
         }
     }

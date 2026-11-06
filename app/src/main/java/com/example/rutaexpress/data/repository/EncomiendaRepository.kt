@@ -1,6 +1,7 @@
 package com.example.rutaexpress.data.repository
 
 import com.example.rutaexpress.data.model.Encomienda
+import com.example.rutaexpress.data.model.Movimiento
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.channels.awaitClose
@@ -50,9 +51,42 @@ class EncomiendaRepository {
     }
 
     suspend fun actualizarEstado(id: String, nuevoEstado: String): Result<Unit> = runCatching {
+        val ahora = System.currentTimeMillis()
         encomiendasCollection.document(id).update(
-            "estado", nuevoEstado,
-            "fechaActualizacion", FieldValue.serverTimestamp()
+            mapOf(
+                "estado" to nuevoEstado,
+                "estadoActual" to nuevoEstado,
+                "ultimaActualizacion" to ahora,
+                "fechaActualizacion" to FieldValue.serverTimestamp()
+            )
+        ).await()
+        Unit
+    }
+
+    /**
+     * Actualiza el estado de la encomienda registrando automáticamente el movimiento en el historial (HU09).
+     */
+    suspend fun actualizarEstadoEncomienda(
+        id: String,
+        nuevoEstado: String,
+        movimiento: Movimiento
+    ): Result<Unit> = runCatching {
+        val ahora = System.currentTimeMillis()
+        val movimientoMap = mapOf(
+            "estado" to movimiento.estado,
+            "fechaHora" to movimiento.fechaHora,
+            "nombreUsuario" to movimiento.nombreUsuario,
+            "idUsuario" to movimiento.idUsuario
+        )
+
+        encomiendasCollection.document(id).update(
+            mapOf(
+                "estadoActual" to nuevoEstado,
+                "estado" to nuevoEstado,
+                "ultimaActualizacion" to ahora,
+                "fechaActualizacion" to FieldValue.serverTimestamp(),
+                "historialMovimientos" to FieldValue.arrayUnion(movimientoMap)
+            )
         ).await()
         Unit
     }
