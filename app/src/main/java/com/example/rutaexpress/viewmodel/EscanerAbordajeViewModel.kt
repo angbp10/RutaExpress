@@ -6,9 +6,11 @@ import com.example.rutaexpress.data.model.Reserva
 import com.example.rutaexpress.data.model.Viaje
 import com.example.rutaexpress.data.repository.ReservaRepository
 import com.example.rutaexpress.data.repository.ViajeRepository
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -31,6 +33,8 @@ class EscanerAbordajeViewModel(
     private val _uiState = MutableStateFlow(EscanerAbordajeUiState())
     val uiState: StateFlow<EscanerAbordajeUiState> = _uiState.asStateFlow()
 
+    private var reservasListenerJob: Job? = null
+
     init {
         cargarViajes()
     }
@@ -39,12 +43,16 @@ class EscanerAbordajeViewModel(
         _uiState.update { it.copy(isLoadingViajes = true) }
         viewModelScope.launch {
             viajeRepository.getViajesFlow().collect { lista ->
+                val viajeSeleccionadoActual = _uiState.value.viajeSeleccionado ?: lista.firstOrNull()
                 _uiState.update {
                     it.copy(
                         viajesDisponibles = lista,
-                        viajeSeleccionado = it.viajeSeleccionado ?: lista.firstOrNull(),
+                        viajeSeleccionado = viajeSeleccionadoActual,
                         isLoadingViajes = false,
                     )
+                }
+                if (viajeSeleccionadoActual != null) {
+                    escucharReservasDelTurno(viajeSeleccionadoActual.id)
                 }
             }
         }
@@ -52,6 +60,29 @@ class EscanerAbordajeViewModel(
 
     fun seleccionarViaje(viaje: Viaje) {
         _uiState.update { it.copy(viajeSeleccionado = viaje) }
+        escucharReservasDelTurno(viaje.id)
+    }
+
+    /**
+     * Inicia un SnapshotListener en tiempo real a las reservas/boletos del turno seleccionado (HU29).
+     * Cuenta cuántos boletos tienen estadoAbordaje == "ABORDADO" y actualiza automáticamente la UI.
+     */
+    private fun escucharReservasDelTurno(idViaje: String) {
+        reservasListenerJob?.cancel()
+        if (idViaje.isBlank()) return
+
+        reservasListenerJob = viewModelScope.launch {
+            reservaRepository.obtenerReservasPorViajeFlow(idViaje)
+                .catch { /* ignorar errores de red temporales */ }
+                .collect { listaReservas ->
+                    val totalAbordados = listaReservas.count {
+                        it.estadoAbordaje.equals("ABORDADO", ignoreCase = true)
+                    }
+                    _uiState.update {
+                        it.copy(totalAbordadosTurno = totalAbordados)
+                    }
+                }
+        }
     }
 
     fun procesarBoletoEscaneado(idBoleto: String) {
@@ -81,7 +112,6 @@ class EscanerAbordajeViewModel(
                         resultadoExitoso = reservaAbordada,
                         errorRechazo = null,
                         mostrarDialogoResultado = true,
-                        totalAbordadosTurno = it.totalAbordadosTurno + 1,
                     )
                 }
             }.onFailure { exception ->

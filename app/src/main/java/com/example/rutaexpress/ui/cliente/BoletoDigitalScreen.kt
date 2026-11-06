@@ -1,7 +1,16 @@
 package com.example.rutaexpress.ui.cliente
 
+import android.content.ContentValues
+import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color as AndroidColor
+import android.graphics.Paint
+import android.os.Environment
+import android.provider.MediaStore
+import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -24,12 +33,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DirectionsBus
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
@@ -38,6 +48,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -52,12 +63,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.rutaexpress.data.model.Reserva
 import com.example.rutaexpress.viewmodel.BoletoDigitalViewModel
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.qrcode.QRCodeWriter
+import java.io.File
+import java.io.FileOutputStream
 
 private val PrimaryRedHex = Color(0xFFF72907)
 private val DarkRedBanner = Color(0xFFB71C1C)
@@ -70,8 +88,8 @@ private val GreenAbordado = Color(0xFF2E7D32)
 fun generarQrBitmap(contenido: String, width: Int = 512, height: Int = 512): Bitmap? {
     if (contenido.isBlank()) return null
     return try {
-        val writer = com.google.zxing.qrcode.QRCodeWriter()
-        val bitMatrix = writer.encode(contenido, com.google.zxing.BarcodeFormat.QR_CODE, width, height)
+        val writer = QRCodeWriter()
+        val bitMatrix = writer.encode(contenido, BarcodeFormat.QR_CODE, width, height)
         val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         for (x in 0 until width) {
             for (y in 0 until height) {
@@ -85,7 +103,145 @@ fun generarQrBitmap(contenido: String, width: Int = 512, height: Int = 512): Bit
 }
 
 /**
- * Pantalla de Boleto Digital con Código QR para Abordaje (HU19).
+ * Dibuja y genera un Bitmap PNG completo del Boleto Digital para Guardar o Compartir.
+ */
+fun generarBoletoCompletoBitmap(reserva: Reserva): Bitmap {
+    val width = 800
+    val height = 1100
+    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    // Fondo blanco
+    canvas.drawColor(AndroidColor.WHITE)
+
+    // Header Rojo
+    paint.color = AndroidColor.parseColor("#B71C1C")
+    canvas.drawRect(0f, 0f, width.toFloat(), 180f, paint)
+
+    paint.color = AndroidColor.WHITE
+    paint.textSize = 40f
+    paint.isFakeBoldText = true
+    paint.textAlign = Paint.Align.CENTER
+    canvas.drawText("TURISMO AZAÑERO", width / 2f, 85f, paint)
+
+    paint.textSize = 24f
+    paint.isFakeBoldText = false
+    canvas.drawText("PASE DE ABORDAJE DIGITAL", width / 2f, 135f, paint)
+
+    // Código de Reserva
+    paint.color = AndroidColor.parseColor("#B71C1C")
+    paint.textSize = 38f
+    paint.isFakeBoldText = true
+    paint.textAlign = Paint.Align.LEFT
+    canvas.drawText("CÓDIGO: ${reserva.codigoReserva}", 60f, 260f, paint)
+
+    // Ruta
+    paint.color = AndroidColor.parseColor("#1C1B1B")
+    paint.textSize = 34f
+    paint.isFakeBoldText = true
+    canvas.drawText("${reserva.origen} ➔ ${reserva.destino}", 60f, 330f, paint)
+
+    // Fecha / Hora y Asientos
+    paint.textSize = 26f
+    paint.isFakeBoldText = false
+    paint.color = AndroidColor.DKGRAY
+    canvas.drawText("Fecha y Hora: ${reserva.fechaViaje} • ${reserva.horaSalida}", 60f, 390f, paint)
+    canvas.drawText("Asiento(s): ${reserva.asientos.joinToString(", ") { "N° $it" }}", 60f, 440f, paint)
+
+    // Pasajeros
+    if (reserva.pasajeros.isNotEmpty()) {
+        val pStr = reserva.pasajeros.joinToString(", ") { "${it.nombres} (${it.dni})" }
+        canvas.drawText("Pasajero(s): $pStr", 60f, 490f, paint)
+    }
+
+    // Línea divisoria
+    paint.strokeWidth = 3f
+    paint.color = AndroidColor.LTGRAY
+    canvas.drawLine(60f, 540f, width - 60f, 540f, paint)
+
+    // Código QR
+    val qrBmp = generarQrBitmap(reserva.id, 400, 400)
+    if (qrBmp != null) {
+        val qrLeft = (width - 400) / 2f
+        canvas.drawBitmap(qrBmp, qrLeft, 580f, null)
+    }
+
+    // Pie de página
+    paint.textAlign = Paint.Align.CENTER
+    paint.textSize = 22f
+    paint.color = AndroidColor.GRAY
+    canvas.drawText("Muestra este código QR al momento de abordar", width / 2f, 1030f, paint)
+
+    return bitmap
+}
+
+/**
+ * Guarda el boleto en la Galería de Fotos del dispositivo usando MediaStore.
+ */
+fun guardarBoletoEnGaleria(context: Context, bitmap: Bitmap, codigoReserva: String): Boolean {
+    return try {
+        val resolver = context.contentResolver
+        val filename = "Boleto_RutaExpress_$codigoReserva.png"
+        val contentValues = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
+            put(MediaStore.MediaColumns.MIME_TYPE, "image/png")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/RutaExpress")
+            put(MediaStore.MediaColumns.IS_PENDING, 1)
+        }
+
+        val imageUri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+            ?: return false
+
+        resolver.openOutputStream(imageUri)?.use { stream ->
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
+        }
+
+        contentValues.clear()
+        contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
+        resolver.update(imageUri, contentValues, null, null)
+        true
+    } catch (e: Exception) {
+        e.printStackTrace()
+        false
+    }
+}
+
+/**
+ * Comparte la imagen del Boleto Digital a través de WhatsApp / Aplicaciones Externas.
+ */
+fun compartirBoletoImagen(context: Context, bitmap: Bitmap, codigoReserva: String) {
+    try {
+        val cachePath = File(context.cacheDir, "images")
+        cachePath.mkdirs()
+        val file = File(cachePath, "boleto_$codigoReserva.png")
+        FileOutputStream(file).use { stream ->
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
+        }
+
+        val contentUri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            file
+        )
+
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "image/png"
+            putExtra(Intent.EXTRA_STREAM, contentUri)
+            putExtra(Intent.EXTRA_SUBJECT, "Boleto Digital RutaExpress - $codigoReserva")
+            putExtra(Intent.EXTRA_TEXT, "Adjunto mi pase de abordaje digital RutaExpress ($codigoReserva).")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+
+        context.startActivity(Intent.createChooser(intent, "Compartir Boleto Digital via"))
+    } catch (e: Exception) {
+        e.printStackTrace()
+        Toast.makeText(context, "Error al compartir boleto: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+    }
+}
+
+/**
+ * Pantalla de Boleto Digital con Código QR y Opciones para Invitados (HU19).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -94,6 +250,7 @@ fun BoletoDigitalScreen(
     viewModel: BoletoDigitalViewModel = viewModel(),
     onBackClick: () -> Unit = {},
 ) {
+    val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
 
     LaunchedEffect(reservaId) {
@@ -165,6 +322,34 @@ fun BoletoDigitalScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                // ADVERTENCIA CRÍTICA PARA CLIENTES INVITADOS (HU19 PERSISTENCIA)
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFFFFF3E0),
+                    border = BorderStroke(1.dp, Color(0xFFFFB74D)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = Color(0xFFE65100),
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = "¡Atención! Guarda o toma captura de este boleto. Al no tener cuenta, no podrás recuperarlo si cierras la aplicación.",
+                            fontSize = 12.sp,
+                            color = Color(0xFF5D4037),
+                            fontWeight = FontWeight.Bold,
+                            lineHeight = 16.sp
+                        )
+                    }
+                }
+
                 // TICKET ELEVATED CARD (HU19)
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth(),
@@ -248,7 +433,7 @@ fun BoletoDigitalScreen(
                                     Surface(
                                         shape = RoundedCornerShape(12.dp),
                                         color = Color(0xFFE8F5E9),
-                                        border = androidx.compose.foundation.BorderStroke(1.5.dp, GreenAbordado)
+                                        border = BorderStroke(1.5.dp, GreenAbordado)
                                     ) {
                                         Row(
                                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
@@ -273,7 +458,7 @@ fun BoletoDigitalScreen(
                                     Surface(
                                         shape = RoundedCornerShape(12.dp),
                                         color = Color(0xFFFFF3E0),
-                                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFFB74D))
+                                        border = BorderStroke(1.dp, Color(0xFFFFB74D))
                                     ) {
                                         Text(
                                             text = "PENDIENTE DE ABORDAJE",
@@ -409,16 +594,71 @@ fun BoletoDigitalScreen(
                     }
                 }
 
+                // ACCIONES DE PERSISTENCIA Y COMPARTIR (HU19 PERSISTENCIA)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    // Botón Descargar Imagen en Galería
+                    Button(
+                        onClick = {
+                            val ticketBmp = generarBoletoCompletoBitmap(reserva)
+                            val guardadoExitoso = guardarBoletoEnGaleria(context, ticketBmp, reserva.codigoReserva)
+                            if (guardadoExitoso) {
+                                Toast.makeText(context, "¡Boleto guardado en tu galería de fotos!", Toast.LENGTH_LONG).show()
+                            } else {
+                                Toast.makeText(context, "Error al guardar el boleto en la galería.", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = DarkRedBanner)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Download,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Descargar (PNG)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    }
+
+                    // Botón Compartir Boleto
+                    OutlinedButton(
+                        onClick = {
+                            val ticketBmp = generarBoletoCompletoBitmap(reserva)
+                            compartirBoletoImagen(context, ticketBmp, reserva.codigoReserva)
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.5.dp, PrimaryRedHex)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Share,
+                            contentDescription = null,
+                            tint = PrimaryRedHex,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Compartir", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PrimaryRedHex)
+                    }
+                }
+
                 // Botón Volver
-                Button(
+                OutlinedButton(
                     onClick = onBackClick,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp),
+                        .height(44.dp),
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryRedHex)
+                    border = BorderStroke(1.dp, Color.Gray.copy(alpha = 0.4f))
                 ) {
-                    Text("Volver", fontWeight = FontWeight.Bold, color = Color.White)
+                    Text("Volver", fontWeight = FontWeight.Bold, color = Color.DarkGray)
                 }
             }
         }

@@ -374,6 +374,35 @@ class ReservaRepository {
     }
 
     /**
+     * Escucha en tiempo real todas las reservas asociadas a un idViaje / turno específico (HU29).
+     */
+    fun obtenerReservasPorViajeFlow(idViaje: String): Flow<List<Reserva>> = callbackFlow {
+        if (idViaje.isBlank()) {
+            trySend(emptyList())
+            close()
+            return@callbackFlow
+        }
+
+        val listener = reservasCollection
+            .whereEqualTo("idViaje", idViaje)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+                val reservas = snapshot?.documents?.mapNotNull { doc ->
+                    doc.toObject(Reserva::class.java)?.apply {
+                        if (id.isBlank()) id = doc.id
+                    }
+                } ?: emptyList()
+
+                trySend(reservas)
+            }
+
+        awaitClose { listener.remove() }
+    }
+
+    /**
      * Valida de manera estricta el boleto escaneado por el personal y registra el abordaje (HU29).
      *
      * Flujo de validaciones:
