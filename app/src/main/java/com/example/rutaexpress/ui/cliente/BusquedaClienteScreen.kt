@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ConfirmationNumber
 import androidx.compose.material.icons.filled.DirectionsBus
+import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.Luggage
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
@@ -50,6 +51,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -60,9 +62,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -71,7 +77,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -81,6 +90,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -116,11 +126,15 @@ fun BusquedaClienteScreen(
     onMenuClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
     onSeleccionarAsientosClick: (String) -> Unit = {},
+    onRastreoEncomiendaClick: () -> Unit = {},
     esModoRecepcionista: Boolean = false,
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     var selectedBottomTab by remember { mutableIntStateOf(0) }
+
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
 
     val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
     val sdfShort = SimpleDateFormat("dd/MM", Locale.getDefault())
@@ -162,28 +176,105 @@ fun BusquedaClienteScreen(
         }
     }
 
-    Scaffold(
-        containerColor = BackgroundSurfaceHex,
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        text = if (esModoRecepcionista) "BÚSQUEDA DE SALIDAS (RECEPCIÓN)" else "BÚSQUEDA",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = PrimaryRedHex,
-                        letterSpacing = 1.2.sp
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onMenuClick) {
-                        Icon(
-                            imageVector = if (esModoRecepcionista) Icons.AutoMirrored.Filled.ArrowBack else Icons.Default.Menu,
-                            contentDescription = if (esModoRecepcionista) "Volver al Panel Administrativo" else "Menú",
-                            tint = TextPrimaryHex
-                        )
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        gesturesEnabled = !esModoRecepcionista,
+        drawerContent = {
+            if (!esModoRecepcionista) {
+                ModalDrawerSheet(
+                    drawerContainerColor = BackgroundSurfaceHex
+                ) {
+                    // Header del Drawer
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(PrimaryRedHex)
+                            .padding(24.dp)
+                    ) {
+                        Column {
+                            Box(
+                                modifier = Modifier
+                                    .size(50.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.DirectionsBus,
+                                    contentDescription = null,
+                                    tint = PrimaryRedHex
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "TURISMO AZAÑERO",
+                                color = Color.White,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "RutaExpress",
+                                color = Color.White.copy(alpha = 0.8f),
+                                fontSize = 13.sp
+                            )
+                        }
                     }
-                },
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    NavigationDrawerItem(
+                        icon = { Icon(Icons.Default.Schedule, contentDescription = null, tint = PrimaryRedHex) },
+                        label = { Text("Búsqueda de Pasajes", fontWeight = FontWeight.Bold) },
+                        selected = true,
+                        onClick = { scope.launch { drawerState.close() } },
+                        colors = NavigationDrawerItemDefaults.colors(
+                            selectedContainerColor = PrimaryRedHex.copy(alpha = 0.1f)
+                        ),
+                        modifier = Modifier.padding(horizontal = 12.dp)
+                    )
+
+                    NavigationDrawerItem(
+                        icon = { Icon(Icons.Default.LocalShipping, contentDescription = null, tint = PrimaryRedHex) },
+                        label = { Text("Rastrear Encomienda", fontWeight = FontWeight.Bold) },
+                        selected = false,
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            onRastreoEncomiendaClick()
+                        },
+                        modifier = Modifier.padding(horizontal = 12.dp)
+                    )
+                }
+            }
+        }
+    ) {
+        Scaffold(
+            containerColor = BackgroundSurfaceHex,
+            topBar = {
+                CenterAlignedTopAppBar(
+                    title = {
+                        Text(
+                            text = if (esModoRecepcionista) "BÚSQUEDA DE SALIDAS (RECEPCIÓN)" else "BÚSQUEDA",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = PrimaryRedHex,
+                            letterSpacing = 1.2.sp
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = {
+                            if (esModoRecepcionista) {
+                                onMenuClick()
+                            } else {
+                                scope.launch { drawerState.open() }
+                            }
+                        }) {
+                            Icon(
+                                imageVector = if (esModoRecepcionista) Icons.AutoMirrored.Filled.ArrowBack else Icons.Default.Menu,
+                                contentDescription = if (esModoRecepcionista) "Volver al Panel Administrativo" else "Menú Principal",
+                                tint = TextPrimaryHex
+                            )
+                        }
+                    },
                 actions = {
                     IconButton(onClick = onProfileClick) {
                         Icon(
@@ -358,6 +449,7 @@ fun BusquedaClienteScreen(
             }
         }
     }
+}
 }
 
 @Composable

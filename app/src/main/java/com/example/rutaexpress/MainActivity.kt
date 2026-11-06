@@ -15,6 +15,7 @@ import androidx.navigation.navArgument
 import com.example.rutaexpress.ui.cliente.BoletoDigitalScreen
 import com.example.rutaexpress.ui.cliente.BusquedaClienteScreen
 import com.example.rutaexpress.ui.cliente.PagoClienteScreen
+import com.example.rutaexpress.ui.cliente.RastreoClienteScreen
 import com.example.rutaexpress.ui.cliente.SeleccionAsientosScreen
 import com.example.rutaexpress.ui.home.ConductorHomeScreen
 import com.example.rutaexpress.ui.home.RecepcionistaHomeScreen
@@ -222,6 +223,9 @@ fun AppNavigation() {
                 },
                 onSeleccionarAsientosClick = { viajeId: String ->
                     navController.navigate("seleccion_asientos/$viajeId?esRecepcionista=false")
+                },
+                onRastreoEncomiendaClick = {
+                    navController.navigate("rastreo_encomienda")
                 }
             )
         }
@@ -290,6 +294,14 @@ fun AppNavigation() {
 
         composable("escaner_abordaje") {
             EscanerAbordajeScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable("rastreo_encomienda") {
+            RastreoClienteScreen(
                 onBackClick = {
                     navController.popBackStack()
                 }

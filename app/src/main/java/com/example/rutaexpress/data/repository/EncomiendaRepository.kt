@@ -105,4 +105,44 @@ class EncomiendaRepository {
             0
         }
     }.getOrDefault(0)
+
+    /**
+     * Búsqueda pública de encomiendas por DNI de destinatario/remitente o por código de Guía (HU22).
+     * No requiere sesión ni UID del usuario.
+     */
+    suspend fun buscarEncomiendasPublico(query: String): Result<List<Encomienda>> = runCatching {
+        val qTrim = query.trim()
+        if (qTrim.isBlank()) return@runCatching emptyList()
+
+        if (qTrim.length == 8 && qTrim.all { it.isDigit() }) {
+            val snapshot = encomiendasCollection
+                .where(
+                    com.google.firebase.firestore.Filter.or(
+                        com.google.firebase.firestore.Filter.equalTo("dniDestinatario", qTrim),
+                        com.google.firebase.firestore.Filter.equalTo("dniRemitente", qTrim)
+                    )
+                )
+                .get()
+                .await()
+
+            val list = snapshot.toObjects(Encomienda::class.java)
+            list.sortedByDescending { it.ultimaActualizacion }
+        } else {
+            val cleanGuia = if (qTrim.startsWith("e-", ignoreCase = true)) qTrim.lowercase() else qTrim
+            var snapshot = encomiendasCollection
+                .whereEqualTo("guia", cleanGuia)
+                .get()
+                .await()
+
+            var list = snapshot.toObjects(Encomienda::class.java)
+            if (list.isEmpty() && !cleanGuia.startsWith("e-", ignoreCase = true)) {
+                snapshot = encomiendasCollection
+                    .whereEqualTo("guia", "e-$cleanGuia")
+                    .get()
+                    .await()
+                list = snapshot.toObjects(Encomienda::class.java)
+            }
+            list.sortedByDescending { it.ultimaActualizacion }
+        }
+    }
 }
