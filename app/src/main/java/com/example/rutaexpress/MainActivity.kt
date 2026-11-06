@@ -12,6 +12,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
+import com.example.rutaexpress.ui.cliente.BoletoDigitalScreen
 import com.example.rutaexpress.ui.cliente.BusquedaClienteScreen
 import com.example.rutaexpress.ui.cliente.PagoClienteScreen
 import com.example.rutaexpress.ui.cliente.SeleccionAsientosScreen
@@ -20,6 +21,7 @@ import com.example.rutaexpress.ui.home.RecepcionistaHomeScreen
 import com.example.rutaexpress.ui.login.LoginScreen
 import com.example.rutaexpress.ui.recepcionista.CobroReservaScreen
 import com.example.rutaexpress.ui.recepcionista.EncomiendaScreen
+import com.example.rutaexpress.ui.recepcionista.EscanerAbordajeScreen
 import com.example.rutaexpress.ui.recepcionista.GestionEstadosScreen
 import com.example.rutaexpress.ui.recepcionista.RecepcionistaProfileScreen
 import com.example.rutaexpress.ui.recepcionista.ValidacionPagosScreen
@@ -136,6 +138,9 @@ fun AppNavigation() {
                 },
                 onNavigateToValidacionPagos = {
                     navController.navigate("validacion_pagos")
+                },
+                onNavigateToEscanerAbordaje = {
+                    navController.navigate("escaner_abordaje")
                 }
             )
         }
@@ -261,6 +266,32 @@ fun AppNavigation() {
                     navController.navigate("home_cliente") {
                         popUpTo("home_cliente") { inclusive = true }
                     }
+                },
+                onVerBoletoDigital = { resId ->
+                    navController.navigate("boleto_digital/$resId")
+                }
+            )
+        }
+
+        composable(
+            route = "boleto_digital/{reservaId}",
+            arguments = listOf(
+                navArgument("reservaId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val reservaId = backStackEntry.arguments?.getString("reservaId").orEmpty()
+            BoletoDigitalScreen(
+                reservaId = reservaId,
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable("escaner_abordaje") {
+            EscanerAbordajeScreen(
+                onBackClick = {
+                    navController.popBackStack()
                 }
             )
         }
@@ -271,6 +302,9 @@ fun AppNavigation() {
                     navController.navigate("login") {
                         popUpTo("home_conductor") { inclusive = true }
                     }
+                },
+                onNavigateToEscaner = {
+                    navController.navigate("escaner_abordaje")
                 }
             )
         }

@@ -24,4 +24,8 @@ data class Reserva(
     @get:PropertyName("metodoPago") @set:PropertyName("metodoPago") var metodoPago: String = "",
     @get:PropertyName("numeroOperacion") @set:PropertyName("numeroOperacion") var numeroOperacion: String = "",
     @get:PropertyName("estadoPago") @set:PropertyName("estadoPago") var estadoPago: String = "PENDIENTE",
-)
+    @get:PropertyName("estadoAbordaje") @set:PropertyName("estadoAbordaje") var estadoAbordaje: String = "PENDIENTE",
+) {
+    val idBoleto: String
+        get() = id
+}

@@ -85,6 +85,7 @@ fun PagoClienteScreen(
     viewModel: PagoClienteViewModel = viewModel(),
     onBackClick: () -> Unit = {},
     onPagoEnviadoSuccess: () -> Unit = {},
+    onVerBoletoDigital: ((String) -> Unit)? = null,
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -431,13 +432,29 @@ fun PagoClienteScreen(
                     }
                 },
                 confirmButton = {
-                    Button(
-                        onClick = onPagoEnviadoSuccess,
+                    Column(
                         modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryRedHex),
-                        shape = RoundedCornerShape(10.dp)
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text("Volver al Inicio", fontWeight = FontWeight.Bold, color = Color.White)
+                        if (onVerBoletoDigital != null && reservaId.isNotBlank()) {
+                            Button(
+                                onClick = { onVerBoletoDigital(reservaId) },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(containerColor = DarkRedBanner),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Text("Ver Boleto Digital (QR) 🎫", fontWeight = FontWeight.Bold, color = Color.White)
+                            }
+                        }
+
+                        Button(
+                            onClick = onPagoEnviadoSuccess,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryRedHex),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text("Volver al Inicio", fontWeight = FontWeight.Bold, color = Color.White)
+                        }
                     }
                 },
                 shape = RoundedCornerShape(16.dp),

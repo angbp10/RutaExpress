@@ -372,4 +372,69 @@ class ReservaRepository {
             Unit
         }
     }
+
+    /**
+     * Valida de manera estricta el boleto escaneado por el personal y registra el abordaje (HU29).
+     *
+     * Flujo de validaciones:
+     * 1. ¿Existe el documento en Firestore?
+     * 2. ¿Pertenece al idViaje del turno seleccionado?
+     * 3. ¿El estadoPago es "PAGADO"?
+     * 4. ¿El estadoAbordaje ya es "ABORDADO"?
+     * 5. Si pasa todo: Actualiza estadoAbordaje = "ABORDADO" en Firestore.
+     */
+    suspend fun validarYMarcarAbordaje(
+        idBoletoEscaneado: String,
+        idViajeTurnoActual: String = ""
+    ): Result<Reserva> {
+        return runCatching {
+            val cleanId = idBoletoEscaneado.trim()
+            require(cleanId.isNotBlank()) { "El código o ID escaneado está vacío." }
+
+            // 1. ¿Existe en Firestore?
+            val docRef = reservasCollection.document(cleanId)
+            var docSnap = docRef.get().await()
+
+            // Si se escaneó por códigoReserva (ej: REX-12345), buscar el documento por codigoReserva
+            if (!docSnap.exists()) {
+                val querySnap = reservasCollection
+                    .whereEqualTo("codigoReserva", cleanId.uppercase())
+                    .get()
+                    .await()
+
+                if (!querySnap.isEmpty) {
+                    docSnap = querySnap.documents.first()
+                }
+            }
+
+            if (!docSnap.exists()) {
+                throw Exception("Boleto no encontrado / inválido.")
+            }
+
+            val reserva = docSnap.toObject(Reserva::class.java)?.apply {
+                if (id.isBlank()) id = docSnap.id
+            } ?: throw Exception("Error al decodificar la información del boleto.")
+
+            // 2. ¿Es del turno correcto?
+            if (idViajeTurnoActual.isNotBlank() && reserva.idViaje.isNotBlank()) {
+                if (reserva.idViaje != idViajeTurnoActual) {
+                    throw Exception("Este boleto pertenece a otro turno o ruta.")
+                }
+            }
+
+            // 3. ¿Está pagado?
+            if (!reserva.estadoPago.equals("PAGADO", ignoreCase = true) && !reserva.estado.equals("PAGADO", ignoreCase = true)) {
+                throw Exception("El boleto no ha sido pagado (Estado: ${reserva.estadoPago.ifBlank { reserva.estado }}).")
+            }
+
+            // 4. ¿Ya se usó?
+            if (reserva.estadoAbordaje.equals("ABORDADO", ignoreCase = true)) {
+                throw Exception("¡Alerta! Este boleto ya fue escaneado y utilizado previamente.")
+            }
+
+            // 5. ¡ÉXITO! Marcar estadoAbordaje = "ABORDADO" en Firestore
+            docSnap.reference.update("estadoAbordaje", "ABORDADO").await()
+            reserva.copy(estadoAbordaje = "ABORDADO")
+        }
+    }
 }

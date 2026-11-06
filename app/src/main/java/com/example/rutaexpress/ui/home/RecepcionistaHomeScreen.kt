@@ -44,6 +44,7 @@ import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Search
@@ -123,6 +124,7 @@ fun RecepcionistaHomeScreen(
     onNavigateToCobroReserva: () -> Unit = {},
     onNavigateToBusquedaSalidas: () -> Unit = {},
     onNavigateToValidacionPagos: () -> Unit = {},
+    onNavigateToEscanerAbordaje: () -> Unit = {},
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -274,6 +276,17 @@ fun RecepcionistaHomeScreen(
                     onClick = {
                         scope.launch { drawerState.close() }
                         onNavigateToValidacionPagos()
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
+
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.QrCodeScanner, contentDescription = null, tint = PrimaryRedHex) },
+                    label = { Text("Escáner de Abordaje (QR)", fontWeight = FontWeight.Bold) },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onNavigateToEscanerAbordaje()
                     },
                     modifier = Modifier.padding(horizontal = 12.dp)
                 )

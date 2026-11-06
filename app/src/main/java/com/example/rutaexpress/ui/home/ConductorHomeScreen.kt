@@ -22,6 +22,9 @@ import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -56,6 +59,7 @@ private val BackgroundSurfaceHex = Color(0xFFFCF9F8)
 fun ConductorHomeScreen(
     viewModel: ConductorHomeViewModel = viewModel(),
     onLogoutClick: () -> Unit = {},
+    onNavigateToEscaner: () -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val conductorNombre = uiState.conductorNombre.ifBlank { "Conductor" }
@@ -134,6 +138,30 @@ fun ConductorHomeScreen(
                         )
                     }
                 }
+            }
+
+            // Botón Escáner de Abordaje para Conductor (HU29)
+            Button(
+                onClick = onNavigateToEscaner,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryRedHex)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.QrCodeScanner,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(22.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "📷 Escanear Billetes de Abordaje (QR)",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
             }
 
             Spacer(modifier = Modifier.height(18.dp))
