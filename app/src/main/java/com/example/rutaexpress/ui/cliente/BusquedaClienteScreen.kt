@@ -600,39 +600,47 @@ fun FormularioBusquedaCard(
                 }
             }
 
-            // Fila Origen - Swap - Destino con pesos 50/50 e imprevistos de texto prevenidos
-            Row(
+            // Estructura VERTICAL para Origen -> Botón Intercambio -> Destino (Evita textos cortados)
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
+                // 1. Origen Full Width
                 AgenciaDropdownMenu(
                     label = "Origen",
                     selectedValue = uiState.origen,
                     opciones = AGENCIAS_DISPONIBLES,
                     onValueChange = onOrigenChanged,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.fillMaxWidth()
                 )
 
-                IconButton(
-                    onClick = onSwapClick,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(PrimaryRedHex, shape = CircleShape)
+                // 2. Botón de Intercambio (Flechas) en el centro
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.SwapHoriz,
-                        contentDescription = "Intercambiar Origen y Destino",
-                        tint = Color.White
-                    )
+                    IconButton(
+                        onClick = onSwapClick,
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(PrimaryRedHex, shape = CircleShape)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.SwapHoriz,
+                            contentDescription = "Intercambiar Origen y Destino",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
 
+                // 3. Destino Full Width
                 AgenciaDropdownMenu(
                     label = "Destino",
                     selectedValue = uiState.destino,
                     opciones = AGENCIAS_DISPONIBLES,
                     onValueChange = onDestinoChanged,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
 
@@ -665,7 +673,7 @@ fun FormularioBusquedaCard(
                     ) {
                         Text(
                             text = hoyLabel,
-                            fontSize = 11.sp,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -685,7 +693,7 @@ fun FormularioBusquedaCard(
                     ) {
                         Text(
                             text = mananaLabel,
-                            fontSize = 11.sp,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -711,7 +719,8 @@ fun FormularioBusquedaCard(
                             Spacer(modifier = Modifier.width(3.dp))
                             Text(
                                 text = "Otra fecha",
-                                fontSize = 11.sp,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -842,15 +851,20 @@ fun ResultadoViajeCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 8.dp)
+                ) {
                     Text(
                         text = "${viaje.origen} ➔ ${viaje.destino}",
                         fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold,
+                        lineHeight = 22.sp,
+                        fontWeight = FontWeight.ExtraBold,
                         color = TextPrimaryHex
                     )
                     Text(
-                        text = "Hora de salida: ${viaje.horaSalida}",
+                        text = "Hora de salida: ${viaje.fecha} • ${viaje.horaSalida}",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = Color.DarkGray
