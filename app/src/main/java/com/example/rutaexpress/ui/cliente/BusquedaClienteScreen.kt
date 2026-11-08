@@ -189,35 +189,16 @@ fun BusquedaClienteScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(PrimaryRedHex)
-                            .padding(24.dp)
+                            .padding(horizontal = 20.dp, vertical = 24.dp)
                     ) {
-                        Column {
-                            Box(
-                                modifier = Modifier
-                                    .size(50.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.White),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.DirectionsBus,
-                                    contentDescription = null,
-                                    tint = PrimaryRedHex
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Text(
-                                text = "TURISMO AZAÑERO",
-                                color = Color.White,
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = "RutaExpress",
-                                color = Color.White.copy(alpha = 0.8f),
-                                fontSize = 13.sp
-                            )
-                        }
+                        Image(
+                            painter = painterResource(id = R.drawable.logo_largo),
+                            contentDescription = "Logo RutaExpress",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(60.dp),
+                            contentScale = ContentScale.Fit
+                        )
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -299,8 +280,8 @@ fun BusquedaClienteScreen(
                     NavigationBarItem(
                         selected = selectedBottomTab == 0,
                         onClick = { selectedBottomTab = 0 },
-                        icon = { Icon(Icons.Default.Schedule, contentDescription = "Schedules") },
-                        label = { Text("Schedules", fontSize = 11.sp) },
+                        icon = { Icon(Icons.Default.Schedule, contentDescription = "Horarios") },
+                        label = { Text("Horarios", fontSize = 11.sp) },
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = PrimaryRedHex,
                             selectedTextColor = PrimaryRedHex,
@@ -310,20 +291,20 @@ fun BusquedaClienteScreen(
                     NavigationBarItem(
                         selected = selectedBottomTab == 1,
                         onClick = { selectedBottomTab = 1 },
-                        icon = { Icon(Icons.Default.ConfirmationNumber, contentDescription = "My Trips") },
-                        label = { Text("My Trips", fontSize = 11.sp) }
+                        icon = { Icon(Icons.Default.ConfirmationNumber, contentDescription = "Mis Viajes") },
+                        label = { Text("Mis Viajes", fontSize = 11.sp) }
                     )
                     NavigationBarItem(
                         selected = selectedBottomTab == 2,
                         onClick = { selectedBottomTab = 2 },
-                        icon = { Icon(Icons.AutoMirrored.Filled.ReceiptLong, contentDescription = "Tickets") },
-                        label = { Text("Tickets", fontSize = 11.sp) }
+                        icon = { Icon(Icons.AutoMirrored.Filled.ReceiptLong, contentDescription = "Boletos") },
+                        label = { Text("Boletos", fontSize = 11.sp) }
                     )
                     NavigationBarItem(
                         selected = selectedBottomTab == 3,
                         onClick = { selectedBottomTab = 3 },
-                        icon = { Icon(Icons.Default.Person, contentDescription = "Profile") },
-                        label = { Text("Profile", fontSize = 11.sp) }
+                        icon = { Icon(Icons.Default.Person, contentDescription = "Perfil") },
+                        label = { Text("Perfil", fontSize = 11.sp) }
                     )
                 }
             }
@@ -480,27 +461,19 @@ fun CarruselBannerSuperior() {
             elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
-                // Capa 1: Imagen de fondo
+                // Capa 1: Imagen de fondo local
                 Image(
-                    painter = painterResource(id = R.drawable.ic_launcher_background),
-                    contentDescription = null,
+                    painter = painterResource(id = ruta.imagenDrawable),
+                    contentDescription = ruta.tituloRuta,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
                 )
 
-                // Capa 2: Gradiente oscuro superpuesto
+                // Capa 2: Capa Oscura (Overlay semi-transparente)
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.Black.copy(alpha = 0.4f),
-                                    Color(0xFF7A0000).copy(alpha = 0.85f),
-                                    Color(0xFFB71C1C).copy(alpha = 0.95f)
-                                )
-                            )
-                        )
+                        .background(Color.Black.copy(alpha = 0.4f))
                 )
 
                 // Capa 3: Textos superpuestos

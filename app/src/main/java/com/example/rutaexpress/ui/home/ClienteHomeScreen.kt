@@ -1,5 +1,6 @@
 package com.example.rutaexpress.ui.home
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -44,10 +45,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.rutaexpress.R
 import com.example.rutaexpress.data.model.RutaHorario
 import com.example.rutaexpress.viewmodel.RutaHorarioViewModel
 
@@ -78,11 +82,11 @@ fun ClienteHomeScreen(
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
-                    Text(
-                        text = "TURISMO AZAÑERO",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = PrimaryRedHex,
+                    Image(
+                        painter = painterResource(id = R.drawable.logo_largo),
+                        contentDescription = "RUTAEXPRESS",
+                        modifier = Modifier.height(36.dp),
+                        contentScale = ContentScale.Fit
                     )
                 },
                 actions = {

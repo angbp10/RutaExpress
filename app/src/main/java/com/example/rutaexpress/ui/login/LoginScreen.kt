@@ -1,5 +1,6 @@
 package com.example.rutaexpress.ui.login
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -54,6 +55,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import com.example.rutaexpress.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -132,34 +136,21 @@ fun LoginScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 // 1. Cabecera con logo
-                Box(
+                Image(
+                    painter = painterResource(id = R.drawable.logo_largo),
+                    contentDescription = "Logo RUTAEXPRESS",
                     modifier = Modifier
-                        .size(80.dp)
-                        .clip(CircleShape)
-                        .background(PrimaryRedHex),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.RocketLaunch,
-                        contentDescription = "Logo RUTAEXPRESS",
-                        tint = Color.White,
-                        modifier = Modifier.size(42.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = "RUTAEXPRESS",
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
+                        .fillMaxWidth()
+                        .height(80.dp),
+                    contentScale = ContentScale.Fit
                 )
+
+                Spacer(modifier = Modifier.height(8.dp))
 
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = "Sign in to continue",
+                    text = "Inicia sesión para continuar",
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

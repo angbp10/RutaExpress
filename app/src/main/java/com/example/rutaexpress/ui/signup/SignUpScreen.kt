@@ -112,7 +112,7 @@ fun SignUpScreen(
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        text = "AUTHENTICATE",
+                        text = "AUTENTICACIÓN",
                         color = PrimaryRedHex,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,

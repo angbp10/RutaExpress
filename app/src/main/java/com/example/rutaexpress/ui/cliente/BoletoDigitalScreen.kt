@@ -26,7 +26,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -63,13 +62,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.rutaexpress.R
 import com.example.rutaexpress.data.model.Reserva
 import com.example.rutaexpress.viewmodel.BoletoDigitalViewModel
 import com.google.zxing.BarcodeFormat
@@ -366,34 +368,18 @@ fun BoletoDigitalScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .background(DarkRedBanner)
-                                .padding(20.dp),
+                                .padding(16.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(32.dp)
-                                            .clip(CircleShape)
-                                            .background(Color.White),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.DirectionsBus,
-                                            contentDescription = null,
-                                            tint = DarkRedBanner,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = "TURISMO AZAÑERO",
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        color = Color.White,
-                                        letterSpacing = 1.sp
-                                    )
-                                }
+                                Image(
+                                    painter = painterResource(id = R.drawable.logo_largo),
+                                    contentDescription = "RutaExpress Logo",
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(45.dp),
+                                    contentScale = ContentScale.Fit
+                                )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     text = "PASE DE ABORDAJE DIGITAL",

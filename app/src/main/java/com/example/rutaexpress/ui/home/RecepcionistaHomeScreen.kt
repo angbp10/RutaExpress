@@ -8,6 +8,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -26,7 +27,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -92,6 +92,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import com.example.rutaexpress.R
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -180,29 +183,18 @@ fun RecepcionistaHomeScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(PrimaryRedHex)
-                        .padding(24.dp)
+                        .padding(horizontal = 20.dp, vertical = 24.dp)
                 ) {
                     Column {
-                        Box(
+                        Image(
+                            painter = painterResource(id = R.drawable.logo_largo),
+                            contentDescription = "Logo RutaExpress",
                             modifier = Modifier
-                                .size(50.dp)
-                                .clip(CircleShape)
-                                .background(Color.White),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.DirectionsBus,
-                                contentDescription = null,
-                                tint = PrimaryRedHex
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = "TURISMO AZAÑERO",
-                            color = Color.White,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold
+                                .fillMaxWidth()
+                                .height(55.dp),
+                            contentScale = ContentScale.Fit
                         )
+                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "Panel Administrativo",
                             color = Color.White.copy(alpha = 0.8f),

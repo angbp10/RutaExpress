@@ -13,34 +13,41 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
+import com.example.rutaexpress.R
+
 val AGENCIAS_DISPONIBLES = listOf("Cajamarca", "Celendín", "Balsas", "Leymebamba", "Chachapoyas")
 
 data class RutaPromocional(
     val tituloRuta: String,
     val descripcion: String,
     val mensajeConfianza: String,
+    val imagenDrawable: Int = R.drawable.slide1,
 )
 
 val RUTAS_PROMOCIONALES = listOf(
     RutaPromocional(
         tituloRuta = "Cajamarca ➔ Celendín",
         descripcion = "Ruta Directa por Encañada y Polloc",
-        mensajeConfianza = "Servicio Seguro y Puntual"
+        mensajeConfianza = "Servicio Seguro y Puntual",
+        imagenDrawable = R.drawable.slide4
     ),
     RutaPromocional(
         tituloRuta = "Celendín ➔ Chachapoyas",
         descripcion = "Confort en cada kilómetro",
-        mensajeConfianza = "Viaja tranquilo con Turismo Azañero"
+        mensajeConfianza = "Viaja tranquilo con Turismo Azañero",
+        imagenDrawable = R.drawable.slide3
     ),
     RutaPromocional(
         tituloRuta = "Celendín ➔ Leymebamba",
         descripcion = "Disfruta el paisaje con seguridad",
-        mensajeConfianza = "Flota moderna y monitoreada"
+        mensajeConfianza = "Flota moderna y monitoreada",
+        imagenDrawable = R.drawable.slide2
     ),
     RutaPromocional(
         tituloRuta = "Celendín ➔ Balsas",
         descripcion = "Conexión rápida y directa",
-        mensajeConfianza = "Servicio Interprovincial Directo"
+        mensajeConfianza = "Servicio Interprovincial Directo",
+        imagenDrawable = R.drawable.slide1
     )
 )
 
